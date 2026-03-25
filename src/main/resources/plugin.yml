@@ -1,0 +1,54 @@
+name: Pica
+version: '1.0-beta'
+main: srbatata.pica.Pica
+api-version: '1.21'
+depend: [Vault]
+commands:
+  picareload:
+    description: Recarrega os arquivos de configuracao do plugin
+  picareta:
+    description: Pega a Picareta do Aprendiz
+  machado:
+    description: Pega o Machado do Aprendiz
+  proteger:
+    description: Confirma a criacao de um terreno protegido
+  desproteger:
+    description: Deleta o terreno em que voce esta pisando
+  addamigo:
+    description: Da permissao para um jogador construir no seu terreno
+  removeamigo:
+    description: Tira a permissao de um jogador no seu terreno
+  picaretaadmin:
+    permission: OP
+    description: Ativa o modo adm
+    usage: /picaretaadmin
+  money:
+    description: Gerencia o seu dinheiro.
+    aliases: [ dinheiro, saldo, bal ]
+  sethome:
+    description: Marca uma casa
+  home:
+    description: Teleporta para uma casa
+  delhome:
+    description: Deleta uma casa
+  tpa:
+    description: Pede teleporte a um jogador
+  tpaccept:
+    description: Aceita teleporte
+  tpadeny:
+    description: Nega teleporte
+  rtp:
+    description: Teleporte aleatorio
+  menu:
+    description: Abre o Hub principal do servidor
+  claimlist:
+    description: Lista os seus terrenos e permite teleportar para eles
+  back:
+    description: Volta 10 segundos no tempo
+  spawn:
+    description: Vai para o spawn do servidor
+  setspawn:
+    description: Define o local do spawn do servidor
+  pvp:
+    description: Sistema de duelos PvP.
+    usage: /pvp <player/accept/setarea>

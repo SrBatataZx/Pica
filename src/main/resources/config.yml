@@ -1,0 +1,72 @@
+# Quantidade de blocos iniciais para evoluir da picareta de Madeira para Pedra.
+# Esse valor será duplicado a cada nova evolução.
+blocos_iniciais: 100
+# Define se o sistema de ir direto para o inventário e a lixeira estão ativos
+sistema_coleta_ativa: true
+
+arena:
+  recompensa: 500.0
+mensagens:
+  sem_permissao: "&cNão pode executar esse comando pois voce nao tem permissão!"
+
+# ==========================================
+# CONFIGURAÇÃO DE MISSÕES
+# ==========================================
+missoes:
+  minerador_1:
+    objetivo: 64
+    premio: 500.0
+  cacador_1:
+    objetivo: 20
+    premio: 650.0
+  minerador_2:
+    objetivo: 500
+    premio: 5000.0
+  cacador_2:
+    objetivo: 100
+    premio: 20000.0
+
+
+# ==========================================
+# CONFIGURAÇÃO DA LOJA
+# ==========================================
+loja:
+  terrenos:
+    preco_limite: 10000.0
+  end:
+    itens:
+      item1:
+        material: "END_STONE"
+        nome: "&dPedra do Fim"
+        quantidade: 64
+        preco: 500.0
+      item2:
+        material: "PURPUR_BLOCK"
+        nome: "&dBloco de Púrpura"
+        quantidade: 64
+        preco: 800.0
+      item3:
+        material: "END_ROD"
+        nome: "&dLâmpada do Fim"
+        quantidade: 16
+        preco: 1200.0
+      item4:
+        material: "CHORUS_FRUIT"
+        nome: "&dFruta do Coro"
+        quantidade: 16
+        preco: 600.0
+      item5:
+        material: "SHULKER_SHELL"
+        nome: "&dCasca de Shulker"
+        quantidade: 2
+        preco: 5000.0
+      item6:
+        material: "DRAGON_BREATH"
+        nome: "&dBafo do Dragão"
+        quantidade: 4
+        preco: 3000.0
+      item7:
+        material: "ELYTRA"
+        nome: "&dElytra"
+        quantidade: 1
+        preco: 50000.0

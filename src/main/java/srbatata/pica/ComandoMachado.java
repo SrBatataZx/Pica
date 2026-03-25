@@ -9,16 +9,16 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ComandoMachado implements CommandExecutor {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
 
-    public ComandoMachado(Pica plugin) {
+    public ComandoMachado(PicaPlugin plugin) {
         this.plugin = plugin;
     }
 

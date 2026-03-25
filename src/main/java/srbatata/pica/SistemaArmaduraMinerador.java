@@ -12,7 +12,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,10 +20,10 @@ import java.util.List;
 
 public class SistemaArmaduraMinerador implements Listener {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     private final NamespacedKey keyMinerador;
 
-    public SistemaArmaduraMinerador(Pica plugin) {
+    public SistemaArmaduraMinerador(PicaPlugin plugin) {
         this.plugin = plugin;
         this.keyMinerador = new NamespacedKey(plugin, "peca_minerador");
         registrarReceitas();

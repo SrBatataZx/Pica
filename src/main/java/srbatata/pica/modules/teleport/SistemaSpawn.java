@@ -6,13 +6,13 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 public class SistemaSpawn implements CommandExecutor {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
 
-    public SistemaSpawn(Pica plugin) {
+    public SistemaSpawn(PicaPlugin plugin) {
         this.plugin = plugin;
     }
 

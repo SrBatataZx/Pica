@@ -10,12 +10,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public record ComandoPicareta(Pica plugin) implements CommandExecutor {
+public record ComandoPicareta(PicaPlugin plugin) implements CommandExecutor {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, String[] args) {

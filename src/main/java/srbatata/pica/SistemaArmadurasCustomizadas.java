@@ -22,17 +22,17 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 import srbatata.pica.modules.lands.SistemaTerrenos;
 
 import java.util.Arrays;
 
 public class SistemaArmadurasCustomizadas implements Listener {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     private final SistemaTerrenos sistemaTerrenos;
 
-    public SistemaArmadurasCustomizadas(Pica plugin, SistemaTerrenos terrenos) {
+    public SistemaArmadurasCustomizadas(PicaPlugin plugin, SistemaTerrenos terrenos) {
         this.plugin = plugin;
         this.sistemaTerrenos = terrenos;
         registrarReceitas();

@@ -1,5 +1,6 @@
 package srbatata.pica.modules.tools;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -16,17 +17,18 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.*;
 
 public class EventosMachado implements Listener {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     private final NamespacedKey keyBlocos;
     private final NamespacedKey keyLenhador;
+    private final Set<Block> blocosSendoQuebrados = new HashSet<>();
 
-    public EventosMachado(Pica plugin) {
+    public EventosMachado(PicaPlugin plugin) {
         this.plugin = plugin;
         this.keyBlocos = new NamespacedKey(plugin, "blocos_quebrados_machado");
         this.keyLenhador = new NamespacedKey(plugin, "modo_lenhador_machado");
@@ -79,6 +81,9 @@ public class EventosMachado implements Listener {
     // ==========================================
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
+        // Previne loop infinito do nosso próprio evento falso
+        if (blocosSendoQuebrados.contains(event.getBlock())) return;
+
         if (event.isCancelled()) return;
         Player player = event.getPlayer();
         ItemStack itemHand = player.getInventory().getItemInMainHand();
@@ -110,12 +115,23 @@ public class EventosMachado implements Listener {
             int blocosCortados = 0;
 
             for (Block b : blocosParaQuebrar) {
-                todosOsDrops.addAll(b.getDrops(itemHand)); // Pega os drops da madeira
+                // Verifica permissão disparando um evento (ignorando o bloco inicial que já foi checado)
+                if (!b.equals(blocoInicial)) {
+                    BlockBreakEvent fakeEvent = new BlockBreakEvent(b, player);
+                    blocosSendoQuebrados.add(b);
+                    Bukkit.getPluginManager().callEvent(fakeEvent);
+                    blocosSendoQuebrados.remove(b);
 
-                List<ItemStack> esp = gerarDropsEspeciais(); // Tenta dropar itens extras (maçã, esmeralda)
+                    // Se algum plugin cancelar (ex: não tem permissão no terreno), ignora este bloco!
+                    if (fakeEvent.isCancelled()) continue;
+                }
+
+                todosOsDrops.addAll(b.getDrops(itemHand));
+
+                List<ItemStack> esp = gerarDropsEspeciais();
                 if (esp != null) todosOsDrops.addAll(esp);
 
-                b.setType(Material.AIR); // Remove o bloco do mundo
+                b.setType(Material.AIR);
                 blocosCortados++;
             }
 
@@ -236,7 +252,6 @@ public class EventosMachado implements Listener {
     private List<ItemStack> gerarDropsEspeciais() {
         double chance = Math.random() * 100; // Intervalo 0-100
         List<ItemStack> drops = new ArrayList<>();
-
         if (chance <= 1.0) {
             drops.add(new ItemStack(Material.EMERALD));
         } else if (chance <= 2.0) {

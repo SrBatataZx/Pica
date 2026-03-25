@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.core;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -20,19 +20,21 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.pica.core.Pica;
+import srbatata.pica.SistemaKits;
+import srbatata.pica.SistemaLoja;
+import srbatata.pica.SistemaMissoes;
 
 import java.util.Arrays;
 
-public class MenuPrincipal implements Listener, CommandExecutor {
+public class MainMenuGUI implements Listener, CommandExecutor {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     private final SistemaMissoes sistemaMissoes;
     private final SistemaLoja sistemaLoja;
     private final SistemaKits sistemaKits;
     private final NamespacedKey keyItemMenu;
 
-    public MenuPrincipal(Pica plugin, SistemaMissoes sistemaMissoes, SistemaLoja sistemaLoja, SistemaKits sistemaKits) {
+    public MainMenuGUI(PicaPlugin plugin, SistemaMissoes sistemaMissoes, SistemaLoja sistemaLoja, SistemaKits sistemaKits) {
         this.plugin = plugin;
         this.sistemaMissoes = sistemaMissoes;
         this.sistemaLoja = sistemaLoja;

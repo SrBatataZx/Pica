@@ -7,12 +7,12 @@ import org.bukkit.OfflinePlayer;
 import java.util.Collections;
 import java.util.List;
 
-public class EconomiaImplementacao implements Economy {
+public class EconomyService implements Economy {
 
-    private final GerenciadorDeContas dados;
+    private final AccountManager dados;
 
     // Recebe o gerenciador pelo construtor
-    public EconomiaImplementacao(GerenciadorDeContas dados) {
+    public EconomyService(AccountManager dados) {
         this.dados = dados;
     }
 

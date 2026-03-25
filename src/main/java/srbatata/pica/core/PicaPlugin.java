@@ -5,17 +5,17 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
-import srbatata.pica.modules.economy.EconomiaImplementacao;
-import srbatata.pica.modules.economy.GerenciadorDeContas;
+import srbatata.pica.modules.economy.EconomyService;
+import srbatata.pica.modules.economy.AccountManager;
 
 import java.io.File;
 import java.io.IOException;
 
-public final class Pica extends JavaPlugin {
+public final class PicaPlugin extends JavaPlugin {
 
     private File salvosFile;
     private FileConfiguration salvosConfig;
-    private GerenciadorDeContas gerenciadorContas;
+    private AccountManager gerenciadorContas;
 
     @Override
     public void onEnable() {
@@ -30,25 +30,31 @@ public final class Pica extends JavaPlugin {
         criarArquivoSalvos();
 
         // Inicializa Economia
-        this.gerenciadorContas = new GerenciadorDeContas(this);
-        EconomiaImplementacao minhaEco = new EconomiaImplementacao(gerenciadorContas);
+        this.gerenciadorContas = new AccountManager(this);
+        EconomyService minhaEco = new EconomyService(gerenciadorContas);
         getServer().getServicesManager().register(Economy.class, minhaEco, this, ServicePriority.Highest);
 
         // Chama o Registry para registrar comandos e eventos
         PluginRegistry registry = new PluginRegistry(this, minhaEco);
         registry.registrarTudo();
 
-        getLogger().info("Plugin Pica iniciado com sucesso!");
+        getLogger().info("Plugin PicaPlugin iniciado com sucesso!");
     }
 
     @Override
     public void onDisable() {
-        // Aproveite para salvar os dados ao desligar!
         if (gerenciadorContas != null) {
-            // Se você implementou o cache que sugeri antes, chame o salvar aqui
+            gerenciadorContas.salvar(); // Força salvar a economia
         }
-        saveSalvos();
-        getLogger().info("Plugin Pica desativado.");
+
+        // Força todos os jogadores a fecharem os inventários
+        // Isso dispara o InventoryCloseEvent que vai salvar as Mochilas automaticamente!
+        for (org.bukkit.entity.Player p : getServer().getOnlinePlayers()) {
+            p.closeInventory();
+        }
+
+        saveSalvos(); // Salva terrenos, homes, etc.
+        getLogger().info("Plugin PicaPlugin desativado de forma segura.");
     }
 
     // ==========================================

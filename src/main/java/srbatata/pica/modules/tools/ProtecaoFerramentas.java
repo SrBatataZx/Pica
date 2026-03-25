@@ -15,7 +15,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -23,21 +23,23 @@ import java.util.List;
 
 public class ProtecaoFerramentas implements Listener {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     private final NamespacedKey keyPicareta;
     private final NamespacedKey keyMachado;
+    private final NamespacedKey keyMochilaMarker; // NOVO
 
-    public ProtecaoFerramentas(Pica plugin) {
+    public ProtecaoFerramentas(PicaPlugin plugin) {
         this.plugin = plugin;
         this.keyPicareta = new NamespacedKey(plugin, "blocos_quebrados");
         this.keyMachado = new NamespacedKey(plugin, "blocos_quebrados_machado");
+        this.keyMochilaMarker = new NamespacedKey(plugin, "is_mochila"); // NOVO
     }
 
-    // Método auxiliar para saber se o item é uma das nossas ferramentas
     private boolean isProtegido(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return false;
         return item.getItemMeta().getPersistentDataContainer().has(keyPicareta, PersistentDataType.INTEGER) ||
-                item.getItemMeta().getPersistentDataContainer().has(keyMachado, PersistentDataType.INTEGER);
+                item.getItemMeta().getPersistentDataContainer().has(keyMachado, PersistentDataType.INTEGER) ||
+                item.getItemMeta().getPersistentDataContainer().has(keyMochilaMarker, PersistentDataType.BYTE); // NOVO
     }
 
     // 1. Impede de jogar no chão (Tecla Q)

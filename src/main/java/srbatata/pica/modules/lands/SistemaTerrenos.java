@@ -22,13 +22,13 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.*;
 
 public class SistemaTerrenos implements Listener, CommandExecutor {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     public final NamespacedKey keyVara;
 
     private final Map<UUID, Location> pos1 = new HashMap<>();
@@ -40,7 +40,7 @@ public class SistemaTerrenos implements Listener, CommandExecutor {
 
     private final int LIMITE_BASE = 400;
 
-    public SistemaTerrenos(Pica plugin) {
+    public SistemaTerrenos(PicaPlugin plugin) {
         this.plugin = plugin;
         this.keyVara = new NamespacedKey(plugin, "vara_protecao");
 
@@ -531,5 +531,11 @@ public class SistemaTerrenos implements Listener, CommandExecutor {
                 }
             }
         }
+    }
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        jogadorNoTerreno.remove(event.getPlayer().getUniqueId());
+        pos1.remove(event.getPlayer().getUniqueId());
+        pos2.remove(event.getPlayer().getUniqueId());
     }
 }

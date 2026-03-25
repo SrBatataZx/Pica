@@ -10,7 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -19,11 +19,11 @@ import java.util.UUID;
 
 public class SistemaBack implements CommandExecutor, Listener {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     // Guarda um histórico de posições (LinkedList é perfeito para fila de 10 segundos)
     private final Map<UUID, LinkedList<Location>> historico = new HashMap<>();
 
-    public SistemaBack(Pica plugin) {
+    public SistemaBack(PicaPlugin plugin) {
         this.plugin = plugin;
         iniciarRastreadorNoTempo();
     }

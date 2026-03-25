@@ -16,7 +16,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +26,7 @@ import java.util.UUID;
 
 public class SistemaArenaPvP implements Listener, CommandExecutor {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     private final Economy economia; // Integração com sua economia
     private File areasFile;
     private FileConfiguration areasConfig;
@@ -34,7 +34,7 @@ public class SistemaArenaPvP implements Listener, CommandExecutor {
 
     private final int RAIO_ARENA = 25; // Raio da arena
 
-    public SistemaArenaPvP(Pica plugin, Economy economia) {
+    public SistemaArenaPvP(PicaPlugin plugin, Economy economia) {
         this.plugin = plugin;
         this.economia = economia;
         criarArquivoAreas();
@@ -175,7 +175,7 @@ public class SistemaArenaPvP implements Listener, CommandExecutor {
                     matador.sendMessage("§a§l+ $" + valorRecompensa + " §7recebidos pela vitória no PvP!");
                 } else {
                     // Log de aviso no console caso o valor seja 0 (ajuda no debug)
-                    Bukkit.getLogger().warning("[Pica-PvP] O matador " + matador.getName() + " nao recebeu nada pois a recompensa esta 0 na config!");
+                    Bukkit.getLogger().warning("[PicaPlugin-PvP] O matador " + matador.getName() + " nao recebeu nada pois a recompensa esta 0 na config!");
                 }
 
                 // 3. Anúncio GLOBAL para o servidor

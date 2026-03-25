@@ -1,6 +1,6 @@
-name: Pica
+name: PicaPlugin
 version: '1.0-beta'
-main: srbatata.pica.core.Pica
+main: srbatata.pica.core.PicaPlugin
 api-version: '1.21'
 depend: [Vault]
 commands:

@@ -12,7 +12,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 import srbatata.pica.modules.lands.SistemaTerrenos;
 
 import java.util.Arrays;
@@ -20,11 +20,11 @@ import java.util.HashMap;
 
 public class SistemaLoja implements Listener {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     private final Economy econ;
     private final SistemaTerrenos sistemaTerrenos;
 
-    public SistemaLoja(Pica plugin, Economy econ, SistemaTerrenos sistemaTerrenos) {
+    public SistemaLoja(PicaPlugin plugin, Economy econ, SistemaTerrenos sistemaTerrenos) {
         this.plugin = plugin;
         this.econ = econ;
         this.sistemaTerrenos = sistemaTerrenos;

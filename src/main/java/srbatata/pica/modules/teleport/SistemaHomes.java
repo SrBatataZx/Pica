@@ -5,15 +5,15 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.Set;
 
 public class SistemaHomes implements CommandExecutor {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
 
-    public SistemaHomes(Pica plugin) {
+    public SistemaHomes(PicaPlugin plugin) {
         this.plugin = plugin;
     }
 

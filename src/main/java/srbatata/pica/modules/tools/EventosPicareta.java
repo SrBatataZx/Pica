@@ -16,7 +16,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.Sound;
-import srbatata.pica.core.Pica;
+import srbatata.pica.core.PicaPlugin;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,11 +24,11 @@ import java.util.List;
 
 public class EventosPicareta implements Listener {
 
-    private final Pica plugin;
+    private final PicaPlugin plugin;
     private final NamespacedKey keyBlocos;
     private final NamespacedKey keyLixeira;
 
-    public EventosPicareta(Pica plugin) {
+    public EventosPicareta(PicaPlugin plugin) {
         this.plugin = plugin;
         this.keyBlocos = new NamespacedKey(plugin, "blocos_quebrados");
         this.keyLixeira = new NamespacedKey(plugin, "modo_lixeira");

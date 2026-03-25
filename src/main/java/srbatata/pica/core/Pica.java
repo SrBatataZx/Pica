@@ -1,10 +1,12 @@
-package srbatata.pica;
+package srbatata.pica.core;
 
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import srbatata.pica.modules.economy.EconomiaImplementacao;
+import srbatata.pica.modules.economy.GerenciadorDeContas;
 
 import java.io.File;
 import java.io.IOException;

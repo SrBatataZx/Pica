@@ -4,6 +4,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import srbatata.pica.core.Pica;
 
 public class ComandoRecarregar implements CommandExecutor {
 

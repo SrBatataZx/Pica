@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.modules.tools;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -16,6 +16,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
+import srbatata.pica.core.Pica;
 
 import java.util.*;
 

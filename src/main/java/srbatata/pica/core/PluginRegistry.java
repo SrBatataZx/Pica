@@ -1,8 +1,17 @@
-package srbatata.pica;
+package srbatata.pica.core;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.event.Listener;
+import srbatata.pica.*;
+import srbatata.pica.modules.economy.ComandoMoney;
+import srbatata.pica.modules.economy.EconomiaImplementacao;
+import srbatata.pica.modules.lands.SistemaTerrenos;
+import srbatata.pica.modules.pvp.SistemaArenaPvP;
+import srbatata.pica.modules.teleport.*;
+import srbatata.pica.modules.tools.EventosMachado;
+import srbatata.pica.modules.tools.EventosPicareta;
+import srbatata.pica.modules.tools.ProtecaoFerramentas;
 
 public class PluginRegistry {
 

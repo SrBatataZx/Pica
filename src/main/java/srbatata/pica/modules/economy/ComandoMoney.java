@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.modules.economy;
 
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;

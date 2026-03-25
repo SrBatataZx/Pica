@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.modules.teleport;
 
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -6,6 +6,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import srbatata.pica.core.Pica;
 
 public class SistemaSpawn implements CommandExecutor {
 

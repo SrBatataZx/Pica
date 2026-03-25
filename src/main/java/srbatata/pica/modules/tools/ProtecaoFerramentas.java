@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.modules.tools;
 
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.EntityType;
@@ -15,6 +15,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
+import srbatata.pica.core.Pica;
 
 import java.util.ArrayList;
 import java.util.Iterator;

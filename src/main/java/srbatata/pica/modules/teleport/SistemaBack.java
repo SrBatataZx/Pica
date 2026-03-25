@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.modules.teleport;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import srbatata.pica.core.Pica;
 
 import java.util.HashMap;
 import java.util.LinkedList;

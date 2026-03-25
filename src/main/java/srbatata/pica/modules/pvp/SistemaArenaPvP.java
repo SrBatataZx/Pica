@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.modules.pvp;
 
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.*;
@@ -16,6 +16,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
+import srbatata.pica.core.Pica;
 
 import java.io.File;
 import java.io.IOException;

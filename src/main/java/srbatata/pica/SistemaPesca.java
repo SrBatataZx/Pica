@@ -20,6 +20,7 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
+import srbatata.pica.core.Pica;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;

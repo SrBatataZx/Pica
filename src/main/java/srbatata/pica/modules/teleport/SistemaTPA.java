@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.modules.teleport;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;

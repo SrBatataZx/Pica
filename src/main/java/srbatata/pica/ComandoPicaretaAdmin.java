@@ -3,6 +3,7 @@ package srbatata.pica;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import srbatata.pica.core.Pica;
 
 public class ComandoPicaretaAdmin implements CommandExecutor {
 

@@ -22,6 +22,8 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import srbatata.pica.core.Pica;
+import srbatata.pica.modules.lands.SistemaTerrenos;
 
 import java.util.Arrays;
 

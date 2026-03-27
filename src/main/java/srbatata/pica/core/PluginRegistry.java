@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.event.Listener;
 import srbatata.pica.*;
+import srbatata.pica.armor.ArmorManager;
 
 public class PluginRegistry {
 
@@ -16,6 +17,7 @@ public class PluginRegistry {
     }
 
     public void registrarTudo() {
+        new ArmorManager(plugin);
         // --- 1. SISTEMAS QUE DEPENDEM DE OUTROS ---
         SistemaTerrenos terrenos = new SistemaTerrenos(plugin);
         SistemaMissoes missoes = new SistemaMissoes(plugin, economia);

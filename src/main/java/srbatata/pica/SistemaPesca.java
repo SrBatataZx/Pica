@@ -20,14 +20,14 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
-import srbatata.pica.core.PicaPlugin;
+import srbatata.pica.core.Pica;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SistemaPesca implements Listener {
 
-    private final PicaPlugin plugin;
+    private final Pica plugin;
     private final Economy economia;
     private final Map<UUID, Integer> peixeSlot = new HashMap<>();
     private final String menuNome = "§3§lPEGUE O PEIXE!!!";
@@ -36,7 +36,7 @@ public class SistemaPesca implements Listener {
     private final NamespacedKey valorKey;
     private final NamespacedKey varaKey;
 
-    public SistemaPesca(PicaPlugin plugin, Economy economia) {
+    public SistemaPesca(Pica plugin, Economy economia) {
         this.plugin = plugin;
         this.economia = economia;
         this.pesoKey = new NamespacedKey(plugin, "peixe_peso");

@@ -15,7 +15,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import srbatata.pica.core.PicaPlugin;
+import srbatata.pica.core.Pica;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -24,11 +24,11 @@ import java.util.UUID;
 
 public class SistemaMissoes implements Listener {
 
-    private final PicaPlugin plugin;
+    private final Pica plugin;
     private final Economy econ;
     private final Map<UUID, Missao> missoesAtivas = new HashMap<>();
 
-    public SistemaMissoes(PicaPlugin plugin, Economy econ) {
+    public SistemaMissoes(Pica plugin, Economy econ) {
         this.plugin = plugin;
         this.econ = econ;
 
@@ -94,9 +94,7 @@ public class SistemaMissoes implements Listener {
     // Salva a missão do jogador caso ele saia do servidor (Para não lagar salvando a cada bloco quebrado)
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        java.util.UUID uuid = event.getPlayer().getUniqueId();
-        salvarMissao(uuid);
-        missoesAtivas.remove(uuid);
+        salvarMissao(event.getPlayer().getUniqueId());
     }
 
     // ==========================================

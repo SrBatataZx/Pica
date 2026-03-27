@@ -12,18 +12,18 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.pica.core.PicaPlugin;
+import srbatata.pica.core.Pica;
 
 import java.util.Arrays;
 
 public class SistemaKits implements Listener {
 
-    private final PicaPlugin plugin;
+    private final Pica plugin;
     private final NamespacedKey keyPicareta;
     private final NamespacedKey keyMachado;
     private final NamespacedKey keyVara;
 
-    public SistemaKits(PicaPlugin plugin) {
+    public SistemaKits(Pica plugin) {
         this.plugin = plugin;
         // As mesmas chaves que criamos nos comandos das ferramentas
         this.keyPicareta = new NamespacedKey(plugin, "blocos_quebrados");

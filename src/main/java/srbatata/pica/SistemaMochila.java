@@ -18,7 +18,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.pica.core.PicaPlugin;
+import srbatata.pica.core.Pica;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,7 +28,7 @@ import java.util.UUID;
 
 public class SistemaMochila implements Listener {
 
-    private final PicaPlugin plugin;
+    private final Pica plugin;
     private final NamespacedKey keyMochilaMarker;
     private final NamespacedKey keyMochilaID;
     private final NamespacedKey keyMochilaDono;
@@ -36,7 +36,7 @@ public class SistemaMochila implements Listener {
     // Guarda qual mochila o jogador está acessando no momento para salvar com segurança
     private final Map<UUID, String> mochilasAbertas = new HashMap<>();
 
-    public SistemaMochila(PicaPlugin plugin) {
+    public SistemaMochila(Pica plugin) {
         this.plugin = plugin;
         this.keyMochilaMarker = new NamespacedKey(plugin, "is_mochila");
         this.keyMochilaID = new NamespacedKey(plugin, "mochila_id");

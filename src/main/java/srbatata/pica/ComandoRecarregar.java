@@ -4,13 +4,13 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import srbatata.pica.core.PicaPlugin;
+import srbatata.pica.core.Pica;
 
 public class ComandoRecarregar implements CommandExecutor {
 
-    private final PicaPlugin plugin;
+    private final Pica plugin;
 
-    public ComandoRecarregar(PicaPlugin plugin) {
+    public ComandoRecarregar(Pica plugin) {
         this.plugin = plugin;
     }
 
@@ -28,7 +28,7 @@ public class ComandoRecarregar implements CommandExecutor {
         // 2. Recarrega o salvos.yml
         plugin.recarregarSalvos();
 
-        sender.sendMessage("§a🎉 Todas as configurações do plugin PicaPlugin foram recarregadas!");
+        sender.sendMessage("§a🎉 Todas as configurações do plugin Pica foram recarregadas!");
 
         if (sender instanceof Player) {
             ((Player) sender).playSound(((Player) sender).getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 2.0f);

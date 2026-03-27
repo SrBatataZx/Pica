@@ -1,9 +1,8 @@
-name: PicaPlugin
+name: Pica
 version: '1.0-beta'
-main: srbatata.pica.core.PicaPlugin
+main: srbatata.pica.core.Pica
 api-version: '1.21'
 depend: [Vault]
-load: STARTUP
 commands:
   picareload:
     description: Recarrega os arquivos de configuracao do plugin

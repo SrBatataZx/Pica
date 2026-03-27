@@ -4,21 +4,13 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.event.Listener;
 import srbatata.pica.*;
-import srbatata.pica.modules.economy.MonneyCommand;
-import srbatata.pica.modules.economy.EconomyService;
-import srbatata.pica.modules.lands.SistemaTerrenos;
-import srbatata.pica.modules.pvp.SistemaArenaPvP;
-import srbatata.pica.modules.teleport.*;
-import srbatata.pica.modules.tools.EventosMachado;
-import srbatata.pica.modules.tools.EventosPicareta;
-import srbatata.pica.modules.tools.ProtecaoFerramentas;
 
 public class PluginRegistry {
 
-    private final PicaPlugin plugin;
-    private final EconomyService economia;
+    private final Pica plugin;
+    private final EconomiaImplementacao economia;
 
-    public PluginRegistry(PicaPlugin plugin, EconomyService economia) {
+    public PluginRegistry(Pica plugin, EconomiaImplementacao economia) {
         this.plugin = plugin;
         this.economia = economia;
     }
@@ -29,13 +21,13 @@ public class PluginRegistry {
         SistemaMissoes missoes = new SistemaMissoes(plugin, economia);
         SistemaLoja loja = new SistemaLoja(plugin, economia, terrenos);
         SistemaKits kits = new SistemaKits(plugin);
-        MainMenuGUI menuPrincipal = new MainMenuGUI(plugin, missoes, loja, kits);
+        MenuPrincipal menuPrincipal = new MenuPrincipal(plugin, missoes, loja, kits);
 
         // --- 2. REGISTRO DE COMANDOS ---
         regCmd("picareta", new ComandoPicareta(plugin));
         regCmd("picaretaadmin", new ComandoPicaretaAdmin(plugin));
         regCmd("machado", new ComandoMachado(plugin));
-        regCmd("money", new MonneyCommand(economia));
+        regCmd("money", new ComandoMoney(economia));
         regCmd("picareload", new ComandoRecarregar(plugin));
         regCmd("menu", menuPrincipal);
 

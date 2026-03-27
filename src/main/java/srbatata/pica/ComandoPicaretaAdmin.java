@@ -3,13 +3,13 @@ package srbatata.pica;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import srbatata.pica.core.PicaPlugin;
+import srbatata.pica.core.Pica;
 
 public class ComandoPicaretaAdmin implements CommandExecutor {
 
-    private final PicaPlugin plugin;
+    private final Pica plugin;
 
-    public ComandoPicaretaAdmin(PicaPlugin plugin) {
+    public ComandoPicaretaAdmin(Pica plugin) {
         this.plugin = plugin;
     }
 
@@ -27,9 +27,9 @@ public class ComandoPicaretaAdmin implements CommandExecutor {
         plugin.saveConfig();
 
         if (!atual) {
-            sender.sendMessage("§a[PicaPlugin] O sistema de Auto-Coleta e Lixeira foi ATIVADO.");
+            sender.sendMessage("§a[Pica] O sistema de Auto-Coleta e Lixeira foi ATIVADO.");
         } else {
-            sender.sendMessage("§c[PicaPlugin] O sistema de Auto-Coleta e Lixeira foi DESATIVADO.");
+            sender.sendMessage("§c[Pica] O sistema de Auto-Coleta e Lixeira foi DESATIVADO.");
         }
 
         return true;

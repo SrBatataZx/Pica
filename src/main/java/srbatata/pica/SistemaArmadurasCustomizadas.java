@@ -1,9 +1,6 @@
 package srbatata.pica;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.Particle;
+import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.enchantments.Enchantment;
@@ -22,17 +19,16 @@ import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import srbatata.pica.core.PicaPlugin;
-import srbatata.pica.modules.lands.SistemaTerrenos;
+import srbatata.pica.core.Pica;
 
 import java.util.Arrays;
 
 public class SistemaArmadurasCustomizadas implements Listener {
 
-    private final PicaPlugin plugin;
+    private final Pica plugin;
     private final SistemaTerrenos sistemaTerrenos;
 
-    public SistemaArmadurasCustomizadas(PicaPlugin plugin, SistemaTerrenos terrenos) {
+    public SistemaArmadurasCustomizadas(Pica plugin, SistemaTerrenos terrenos) {
         this.plugin = plugin;
         this.sistemaTerrenos = terrenos;
         registrarReceitas();
@@ -123,7 +119,7 @@ public class SistemaArmadurasCustomizadas implements Listener {
                 }
 
                 // 2. Lógica de Voo e Partículas do Peitoral
-                if (p.getAllowFlight() && !p.getGameMode().name().equals("CREATIVE")) {
+                if (p.getAllowFlight() && p.getGameMode() != GameMode.CREATIVE && p.getGameMode() != GameMode.SPECTATOR) {
                     boolean noTerreno = sistemaTerrenos.isDono(p, p.getLocation());
                     ItemStack chest = p.getInventory().getChestplate();
                     boolean comPeitoral = (chest != null && chest.hasItemMeta() && chest.getItemMeta().getDisplayName().contains("Explorador"));

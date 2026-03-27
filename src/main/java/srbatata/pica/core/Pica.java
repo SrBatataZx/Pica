@@ -6,7 +6,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
-import srbatata.pica.GerenciadorDeContas;
 import srbatata.pica.armor.ArmorManager;
 
 import java.io.File;

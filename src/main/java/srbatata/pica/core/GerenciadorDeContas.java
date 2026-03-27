@@ -1,4 +1,4 @@
-package srbatata.pica;
+package srbatata.pica.core;
 
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;

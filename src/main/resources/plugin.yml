@@ -1,6 +1,6 @@
-name: Pica
+name: GamesAreLife
 version: '1.0-beta'
-main: srbatata.pica.core.Pica
+main: srbatata.gamesarelife.core.Principal
 api-version: '1.21'
 depend: [Vault]
 commands:

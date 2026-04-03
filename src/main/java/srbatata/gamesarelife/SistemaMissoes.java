@@ -31,7 +31,6 @@ public class SistemaMissoes implements Listener {
     public SistemaMissoes(Principal plugin, Economy econ) {
         this.plugin = plugin;
         this.econ = econ;
-
         // Carrega todas as missões salvas quando o servidor liga
         carregarMissoes();
     }
@@ -130,10 +129,13 @@ public class SistemaMissoes implements Listener {
             metaStatus.setLore(Arrays.asList(
                     "§f" + atual.descricao, "",
                     "§7Progresso: §a" + atual.progresso + " §8/ §a" + atual.objetivo,
-                    "§7Recompensa: §a" + econ.format(atual.premio)
+                    "§7Recompensa: §a" + econ.format(atual.premio),
+                    "",
+                    "§c§l> Clique aqui para CANCELAR <" // Linha adicionada
             ));
             statusMissao.setItemMeta(metaStatus);
-        } else {
+        }
+        else {
             statusMissao = new ItemStack(Material.PAPER);
             ItemMeta metaStatus = statusMissao.getItemMeta();
             metaStatus.setDisplayName("§c§lNenhuma Missão Ativa");
@@ -160,13 +162,9 @@ public class SistemaMissoes implements Listener {
         return item;
     }
 
-    // ==========================================
-    // LÓGICA DE CLIQUES
-    // ==========================================
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player)) return;
-        Player player = (Player) event.getWhoClicked();
+        if (!(event.getWhoClicked() instanceof Player player)) return;
         ItemStack itemClicado = event.getCurrentItem();
 
         if (itemClicado == null || itemClicado.getType() == Material.AIR) return;
@@ -174,18 +172,39 @@ public class SistemaMissoes implements Listener {
         if (event.getView().getTitle().equals("§8Quadro de Missões")) {
             event.setCancelled(true);
 
+            // Botão Voltar
             if (itemClicado.getType() == Material.ARROW) {
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
                 player.performCommand("menu");
                 return;
             }
 
-            if (itemClicado.getType() == Material.PAPER || itemClicado.getType() == Material.WRITTEN_BOOK) return;
+            int slot = event.getSlot();
+            UUID uuid = player.getUniqueId();
 
-            if (missoesAtivas.containsKey(player.getUniqueId())) {
-                Missao atual = missoesAtivas.get(player.getUniqueId());
+            // ==========================================
+            // LÓGICA DE CANCELAMENTO (Slot 31)
+            // ==========================================
+            if (slot == 31) {
+                if (missoesAtivas.containsKey(uuid)) {
+                    // Remove a missão da memória e do arquivo salvos.yml
+                    missoesAtivas.remove(uuid);
+                    salvarMissao(uuid);
+
+                    player.sendMessage("§c§l[!] §fSua missão atual foi cancelada.");
+                    player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_BREAK, 0.5f, 2.0f);
+
+                    // Atualiza o menu para mostrar que não há mais missão
+                    abrirMenuMissoes(player);
+                }
+                return;
+            }
+
+            // Se o jogador clicar em qualquer outro lugar e já tiver missão, avisamos
+            if (missoesAtivas.containsKey(uuid)) {
+                Missao atual = missoesAtivas.get(uuid);
                 player.sendMessage("§cVocê já tem uma missão ativa: " + atual.descricao);
-                player.closeInventory();
+                player.sendMessage("§7Cancele a atual no ícone de livro abaixo para escolher outra.");
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                 return;
             }
@@ -200,7 +219,6 @@ public class SistemaMissoes implements Listener {
             int objCac2 = plugin.getConfig().getInt("missoes.cacador_2.objetivo", 100);
             double premCac2 = plugin.getConfig().getDouble("missoes.cacador_2.premio", 20000.0);
 
-            int slot = event.getSlot();
             switch (slot) {
                 case 11: aceitarMissao(player, new Missao("QUEBRAR_PEDRA", objMin1, "Quebre " + objMin1 + " blocos de Pedra.", premMin1)); break;
                 case 15: aceitarMissao(player, new Missao("MATAR_ZUMBI", objCac1, "Derrote " + objCac1 + " Zumbis.", premCac1)); break;

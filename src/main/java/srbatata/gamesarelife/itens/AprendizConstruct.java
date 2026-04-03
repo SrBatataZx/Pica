@@ -12,6 +12,7 @@ import org.bukkit.persistence.PersistentDataType;
 import srbatata.gamesarelife.core.Principal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class AprendizConstruct implements CommandExecutor {
@@ -24,105 +25,60 @@ public class AprendizConstruct implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Uso de Pattern Matching (Java 16+) para deixar o código mais limpo
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage("Apenas jogadores podem usar este comando.");
-            return true;
-        }
+        if (!(sender instanceof Player player)) return true;
 
-        int blocosIniciais = plugin.getConfig().getInt("blocos_iniciais", 50);
+        // Usa os métodos que criamos abaixo para entregar o kit completo
+        player.getInventory().addItem(getMachado(plugin), getPicareta(plugin), getPa(plugin));
 
-        // ==========================================
-        // 1. CRIANDO O MACHADO DO APRENDIZ
-        // ==========================================
-        ItemStack machado = new ItemStack(Material.WOODEN_AXE);
-        ItemMeta metaMachado = machado.getItemMeta();
-
-        if (metaMachado != null) {
-            metaMachado.setDisplayName("§eMachado Do Aprendiz");
-            metaMachado.setUnbreakable(true);
-
-            List<String> loreMachado = new ArrayList<>();
-            loreMachado.add("§cUnico");
-            loreMachado.add("");
-            loreMachado.add("§fModo Lenhador: §cDesativado");
-            loreMachado.add("§fProgresso para evoluir:");
-            loreMachado.add("§8[§7||||||||||§8] §e0/" + blocosIniciais);
-            metaMachado.setLore(loreMachado);
-
-            // Tags exclusivas do Machado
-            NamespacedKey keyBlocosMachado = new NamespacedKey(plugin, "blocos_quebrados_machado");
-            NamespacedKey keyLenhador = new NamespacedKey(plugin, "modo_lenhador_machado");
-
-            metaMachado.getPersistentDataContainer().set(keyBlocosMachado, PersistentDataType.INTEGER, 0);
-            metaMachado.getPersistentDataContainer().set(keyLenhador, PersistentDataType.INTEGER, 0);
-
-            machado.setItemMeta(metaMachado);
-        }
-
-        // ==========================================
-        // 2. CRIANDO A PICARETA DO APRENDIZ
-        // ==========================================
-        ItemStack picareta = new ItemStack(Material.WOODEN_PICKAXE);
-        ItemMeta metaPicareta = picareta.getItemMeta();
-
-        if (metaPicareta != null) {
-            metaPicareta.setDisplayName("§ePicareta Do Aprendiz");
-            metaPicareta.setUnbreakable(true);
-
-            List<String> lorePicareta = new ArrayList<>();
-            lorePicareta.add("§cUnico");
-            lorePicareta.add("");
-            lorePicareta.add("§fModo Lixeira: §cDesativado");
-            lorePicareta.add("§fProgresso para evoluir:");
-            lorePicareta.add("§8[§7||||||||||§8] §e0/" + blocosIniciais);
-            metaPicareta.setLore(lorePicareta);
-
-            // Tags exclusivas da Picareta
-            NamespacedKey keyBlocosPicareta = new NamespacedKey(plugin, "blocos_quebrados");
-            NamespacedKey keyLixeira = new NamespacedKey(plugin, "modo_lixeira");
-
-            metaPicareta.getPersistentDataContainer().set(keyBlocosPicareta, PersistentDataType.INTEGER, 0);
-            metaPicareta.getPersistentDataContainer().set(keyLixeira, PersistentDataType.INTEGER, 0);
-
-            picareta.setItemMeta(metaPicareta);
-        }
-
-        // ==========================================
-        // 3. CRIANDO A PÁ DO APRENDIZ
-        // ==========================================
-        ItemStack pa = new ItemStack(Material.WOODEN_SHOVEL);
-        ItemMeta metaPa = pa.getItemMeta();
-
-        if (metaPa != null) {
-            metaPa.setDisplayName("§ePá Do Aprendiz");
-            metaPa.setUnbreakable(true);
-
-            List<String> lorePa = new ArrayList<>();
-            lorePa.add("§cUnico");
-            lorePa.add(""); // Índice 1
-            lorePa.add("§fModo Lixeira: §cDesativado");
-            lorePa.add("§fProgresso para evoluir:");
-            lorePa.add("§8[§7||||||||||§8] §e0/" + blocosIniciais);
-            metaPa.setLore(lorePa);
-
-            NamespacedKey keyBlocosPa = new NamespacedKey(plugin, "blocos_quebrados_pa");
-            NamespacedKey keyLixeiraPa = new NamespacedKey(plugin, "modo_lixeira_pa");
-
-            metaPa.getPersistentDataContainer().set(keyBlocosPa, PersistentDataType.INTEGER, 0);
-            metaPa.getPersistentDataContainer().set(keyLixeiraPa, PersistentDataType.INTEGER, 0);
-
-            pa.setItemMeta(metaPa);
-        }
-
-        // ==========================================
-        // 4. ENTREGANDO OS ITENS AO JOGADOR
-        // ==========================================
-        // O método addItem do Bukkit suporta Varargs (vários parâmetros do mesmo tipo)
-        player.getInventory().addItem(machado, picareta, pa);
         player.sendMessage("§aVocê recebeu o Kit de Ferramentas do Aprendiz!");
         player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
-
         return true;
+    }
+
+    // --- MÉTODOS ESTÁTICOS PARA GERAR AS FERRAMENTAS REAIS ---
+
+    public static ItemStack getMachado(Principal plugin) {
+        int blocos = plugin.getConfig().getInt("blocos_iniciais", 50);
+        ItemStack item = new ItemStack(Material.WOODEN_AXE);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§eMachado Do Aprendiz");
+        meta.setUnbreakable(true);
+        meta.setLore(Arrays.asList("§cUnico", "", "§fModo Lenhador: §cDesativado", "§fProgresso para evoluir:", "§8[§7||||||||||§8] §e0/" + blocos));
+
+        meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "blocos_quebrados_machado"), PersistentDataType.INTEGER, 0);
+        meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "modo_lenhador_machado"), PersistentDataType.INTEGER, 0);
+
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static ItemStack getPicareta(Principal plugin) {
+        int blocos = plugin.getConfig().getInt("blocos_iniciais", 50);
+        ItemStack item = new ItemStack(Material.WOODEN_PICKAXE);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§ePicareta Do Aprendiz");
+        meta.setUnbreakable(true);
+        meta.setLore(Arrays.asList("§cUnico", "", "§fModo Lixeira: §cDesativado", "§fProgresso para evoluir:", "§8[§7||||||||||§8] §e0/" + blocos));
+
+        meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "blocos_quebrados"), PersistentDataType.INTEGER, 0);
+        meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "modo_lixeira"), PersistentDataType.INTEGER, 0);
+
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public static ItemStack getPa(Principal plugin) {
+        int blocos = plugin.getConfig().getInt("blocos_iniciais", 50);
+        ItemStack item = new ItemStack(Material.WOODEN_SHOVEL);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName("§ePá Do Aprendiz");
+        meta.setUnbreakable(true);
+        meta.setLore(Arrays.asList("§cUnico", "", "§fModo Lixeira: §cDesativado", "§fProgresso para evoluir:", "§8[§7||||||||||§8] §e0/" + blocos));
+
+        meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "blocos_quebrados_pa"), PersistentDataType.INTEGER, 0);
+        meta.getPersistentDataContainer().set(new NamespacedKey(plugin, "modo_lixeira_pa"), PersistentDataType.INTEGER, 0);
+
+        item.setItemMeta(meta);
+        return item;
     }
 }

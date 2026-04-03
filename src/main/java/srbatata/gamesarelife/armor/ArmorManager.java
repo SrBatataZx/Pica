@@ -1,7 +1,7 @@
 package srbatata.gamesarelife.armor;
 
 import org.bukkit.Bukkit;
-import srbatata.gamesarelife.SistemaTerrenos;
+import srbatata.gamesarelife.sistemas.SistemaTerrenos;
 import srbatata.gamesarelife.armor.armorconstruct.ExplorerArmor;
 import srbatata.gamesarelife.armor.armorconstruct.FireArmor;
 import srbatata.gamesarelife.armor.armorconstruct.minerarmor.MinerBoots;

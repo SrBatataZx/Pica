@@ -1,4 +1,4 @@
-package srbatata.gamesarelife;
+package srbatata.gamesarelife.menus;
 
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -12,18 +12,19 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import srbatata.gamesarelife.sistemas.SistemaTerrenos;
 import srbatata.gamesarelife.core.Principal;
 
 import java.util.Arrays;
 import java.util.HashMap;
 
-public class SistemaLoja implements Listener {
+public class MenuLoja implements Listener {
 
     private final Principal plugin;
     private final Economy econ;
     private final SistemaTerrenos sistemaTerrenos;
 
-    public SistemaLoja(Principal plugin, Economy econ, SistemaTerrenos sistemaTerrenos) {
+    public MenuLoja(Principal plugin, Economy econ, SistemaTerrenos sistemaTerrenos) {
         this.plugin = plugin;
         this.econ = econ;
         this.sistemaTerrenos = sistemaTerrenos;

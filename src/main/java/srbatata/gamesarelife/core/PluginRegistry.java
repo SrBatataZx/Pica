@@ -6,6 +6,8 @@ import org.bukkit.event.Listener;
 import srbatata.gamesarelife.*;
 import srbatata.gamesarelife.armor.ArmorManager;
 import srbatata.gamesarelife.blocos.PedraTeleporte;
+import srbatata.gamesarelife.comandos.CmdCarteira;
+import srbatata.gamesarelife.comandos.CmdPagar;
 import srbatata.gamesarelife.dados.GereWaystone;
 import srbatata.gamesarelife.itens.AprendizConstruct;
 import srbatata.gamesarelife.itens.OlhoDoTeleporte;
@@ -13,7 +15,11 @@ import srbatata.gamesarelife.itens.eventos.EvAutoColeta;
 import srbatata.gamesarelife.itens.eventos.EvAxe;
 import srbatata.gamesarelife.itens.eventos.EvPa;
 import srbatata.gamesarelife.itens.eventos.EvPick;
-import srbatata.gamesarelife.dados.GereWaystone; // Import necessário
+import srbatata.gamesarelife.menus.ArmazemAprendiz;
+import srbatata.gamesarelife.menus.MenuLoja;
+import srbatata.gamesarelife.menus.MenuPrincipal;
+import srbatata.gamesarelife.menus.SistemaKits;
+import srbatata.gamesarelife.sistemas.*;
 
 public class PluginRegistry {
 
@@ -32,15 +38,17 @@ public class PluginRegistry {
         // --- 1. SISTEMAS QUE DEPENDEM DE OUTROS ---
         SistemaTerrenos terrenos = new SistemaTerrenos(plugin);
         SistemaMissoes missoes = new SistemaMissoes(plugin, economia);
-        SistemaLoja loja = new SistemaLoja(plugin, economia, terrenos);
+        MenuLoja loja = new MenuLoja(plugin, economia, terrenos);
         SistemaKits kits = new SistemaKits(plugin);
-        MenuPrincipal menuPrincipal = new MenuPrincipal(plugin, missoes, loja, kits);
+        ArmazemAprendiz armazemAprendiz = new ArmazemAprendiz(plugin);
+        MenuPrincipal menuPrincipal = new MenuPrincipal(plugin, missoes, loja, kits, armazemAprendiz);
         new ArmorManager(plugin, terrenos);
         // --- 2. REGISTRO DE COMANDOS ---
         regCmd("picareta", new EvAutoColeta(plugin));
         regCmd("picaretaadmin", new EvAutoColeta(plugin));
         regCmd("machado", new AprendizConstruct(plugin));
-        regCmd("money", new ComandoMoney(economia));
+        regCmd("carteira", new CmdCarteira(economia));
+        regCmd("pagar", new CmdPagar(economia));
         regCmd("picareload", new ComandoRecarregar(plugin));
         regCmd("menu", menuPrincipal);
 
@@ -75,6 +83,8 @@ public class PluginRegistry {
         regCmd("pvp", pvp);
         regEvt(pvp);
 
+        regCmd("discord", new ComandoDiscord());
+
         // --- 3. REGISTRO DE EVENTOS ---
         regEvt(new EvPick(plugin));
         regEvt(new EvAxe(plugin));
@@ -85,11 +95,11 @@ public class PluginRegistry {
         regEvt(loja);
         regEvt(kits);
         regEvt(menuPrincipal);
+        regEvt(armazemAprendiz);
         regEvt(new PedraTeleporte(plugin, gereWaystone));
         regEvt(new OlhoDoTeleporte(plugin, gereWaystone));
         regEvt(new SistemaPesca(plugin, economia));
         regEvt(new SistemaMochila(plugin));
-        regEvt(new SistemaArmadurasCustomizadas(plugin, terrenos));
     }
 
     // Atalhos para economizar código

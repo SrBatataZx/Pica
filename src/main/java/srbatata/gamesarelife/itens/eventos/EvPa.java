@@ -33,12 +33,9 @@ public class EvPa implements Listener {
 
     private final Principal plugin;
 
-    // Chaves da Pá
     private final NamespacedKey keyBlocos;
     private final NamespacedKey keyLixeiraPa;
     private final NamespacedKey keyFiltroPa;
-
-    // Chaves de migração
     private final NamespacedKey keyBlocosAntiga;
 
     public EvPa(Principal plugin) {
@@ -59,9 +56,6 @@ public class EvPa implements Listener {
         }
     }
 
-    // ==========================================
-    // EVENTO 1: ABRIR MENU (SHIFT+CLICK) OU ALTERNAR LIXEIRA (CLICK)
-    // ==========================================
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
@@ -72,7 +66,6 @@ public class EvPa implements Listener {
         if (action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK) {
             ItemStack item = player.getInventory().getItemInMainHand();
 
-            // Garantir que é realmente uma pá antes de continuar
             if (item.getType() != Material.AIR && item.getType().name().endsWith("_SHOVEL") && item.hasItemMeta()) {
                 ItemMeta meta = item.getItemMeta();
                 converterPaAntiga(item, meta);
@@ -89,10 +82,15 @@ public class EvPa implements Listener {
 
                     meta.getPersistentDataContainer().set(keyLixeiraPa, PersistentDataType.INTEGER, novoEstado);
 
+                    // CORREÇÃO: Busca Dinâmica na Lore
                     List<String> lore = meta.getLore();
-                    // Na Pá, o Índice 3 é o Modo Lixeira (o índice 2 é a Habilidade)
-                    if (lore != null && lore.size() >= 6) {
-                        lore.set(3, novoEstado == 1 ? "§fModo Lixeira: §aAtivado" : "§fModo Lixeira: §cDesativado");
+                    if (lore != null) {
+                        for (int i = 0; i < lore.size(); i++) {
+                            if (lore.get(i).contains("Modo Lixeira:")) {
+                                lore.set(i, novoEstado == 1 ? "§fModo Lixeira: §aAtivado" : "§fModo Lixeira: §cDesativado");
+                                break;
+                            }
+                        }
                         meta.setLore(lore);
                     }
 
@@ -110,32 +108,21 @@ public class EvPa implements Listener {
         }
     }
 
-    // ==========================================
-    // EVENTO 2: LÓGICA DE CLIQUES NO MENU DE FILTRO DA PÁ
-    // ==========================================
+    // ... (Os eventos onInventoryClick e abrirMenuFiltro permanecem inalterados)
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getView().getTopInventory().getHolder() instanceof FiltroHolder) {
-
             Player player = (Player) event.getWhoClicked();
             ItemStack pa = player.getInventory().getItemInMainHand();
-
-            // Só executa se o jogador estiver a segurar uma pá
             if (pa.getType() == Material.AIR || !pa.getType().name().endsWith("_SHOVEL") || !pa.hasItemMeta()) return;
-
             ItemMeta meta = pa.getItemMeta();
             if (!meta.getPersistentDataContainer().has(keyLixeiraPa, PersistentDataType.INTEGER)) return;
-
-            // A partir daqui, é seguro cancelar o evento porque sabemos que é a nossa GUI e a nossa ferramenta
             event.setCancelled(true);
-
             ItemStack clickedItem = event.getCurrentItem();
             if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
-
             String filtroAtual = meta.getPersistentDataContainer().getOrDefault(keyFiltroPa, PersistentDataType.STRING, "");
             List<String> listaFiltro = new ArrayList<>(Arrays.asList(filtroAtual.split(",")));
             listaFiltro.removeIf(String::isEmpty);
-
             Material tipoBloco = clickedItem.getType();
             boolean modificou = false;
 
@@ -148,8 +135,7 @@ public class EvPa implements Listener {
                 } else {
                     player.sendMessage("§cEsse item já está no filtro!");
                 }
-            }
-            else if (event.getClickedInventory() != null && event.getClickedInventory().equals(event.getView().getTopInventory())) {
+            } else if (event.getClickedInventory() != null && event.getClickedInventory().equals(event.getView().getTopInventory())) {
                 if (listaFiltro.contains(tipoBloco.name())) {
                     listaFiltro.remove(tipoBloco.name());
                     player.sendMessage("§c[-] §fRemovido §e" + tipoBloco.name() + " §fdo filtro da pá.");
@@ -157,7 +143,6 @@ public class EvPa implements Listener {
                     modificou = true;
                 }
             }
-
             if (modificou) {
                 meta.getPersistentDataContainer().set(keyFiltroPa, PersistentDataType.STRING, String.join(",", listaFiltro));
                 pa.setItemMeta(meta);
@@ -168,10 +153,8 @@ public class EvPa implements Listener {
 
     private void abrirMenuFiltro(Player player, ItemStack pa) {
         Inventory gui = Bukkit.createInventory(new FiltroHolder(), 27, Component.text("§8Filtro da Lixeira (Pá)"));
-
         ItemMeta meta = pa.getItemMeta();
         String filtroStr = meta.getPersistentDataContainer().getOrDefault(keyFiltroPa, PersistentDataType.STRING, "");
-
         if (!filtroStr.isEmpty()) {
             String[] materiais = filtroStr.split(",");
             for (String matName : materiais) {
@@ -186,13 +169,9 @@ public class EvPa implements Listener {
                 }
             }
         }
-
         player.openInventory(gui);
     }
 
-    // ==========================================
-    // EVENTO 3: QUEBRAR BLOCO
-    // ==========================================
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
@@ -208,32 +187,40 @@ public class EvPa implements Listener {
             Material tipoBloco = event.getBlock().getType();
             if (!ehBlocoDeEscavacao(tipoBloco)) return;
 
+            // CORREÇÃO: Gerar tesouros independente da auto-coleta!
+            List<ItemStack> dropsParaEntregar = new ArrayList<>();
+            List<ItemStack> dropsEspeciais = gerarTesouros();
+
+            if (dropsEspeciais != null) {
+                dropsParaEntregar.addAll(dropsEspeciais);
+                player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.5f);
+            }
+
             // --- LÓGICA DE COLETA, PEPITAS E LIXEIRA ---
             if (plugin.getConfig().getBoolean("sistema_coleta_ativa", true)) {
                 event.setDropItems(false);
-
-                List<ItemStack> drops = new ArrayList<>(event.getBlock().getDrops(itemHand));
-                List<ItemStack> dropsEspeciais = gerarTesouros();
-
-                if (dropsEspeciais != null) {
-                    drops.addAll(dropsEspeciais);
-                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.5f);
-                }
+                dropsParaEntregar.addAll(event.getBlock().getDrops(itemHand));
 
                 int estadoLixeira = meta.getPersistentDataContainer().getOrDefault(keyLixeiraPa, PersistentDataType.INTEGER, 0);
                 String filtroStr = meta.getPersistentDataContainer().getOrDefault(keyFiltroPa, PersistentDataType.STRING, "");
 
-                // Deleta os itens filtrados
                 if (estadoLixeira == 1 && !filtroStr.isEmpty()) {
                     List<String> listaFiltro = Arrays.asList(filtroStr.split(","));
-                    drops.removeIf(item -> listaFiltro.contains(item.getType().name()));
+                    dropsParaEntregar.removeIf(item -> listaFiltro.contains(item.getType().name()));
                 }
 
-                HashMap<Integer, ItemStack> sobrou = player.getInventory().addItem(drops.toArray(new ItemStack[0]));
-
+                HashMap<Integer, ItemStack> sobrou = player.getInventory().addItem(dropsParaEntregar.toArray(new ItemStack[0]));
                 if (!sobrou.isEmpty()) {
                     Location loc = event.getBlock().getLocation();
                     for (ItemStack item : sobrou.values()) {
+                        loc.getWorld().dropItemNaturally(loc, item);
+                    }
+                }
+            } else {
+                // Dropa os tesouros no chão se a coleta estiver off
+                if (!dropsParaEntregar.isEmpty()) {
+                    Location loc = event.getBlock().getLocation();
+                    for (ItemStack item : dropsParaEntregar) {
                         loc.getWorld().dropItemNaturally(loc, item);
                     }
                 }
@@ -254,10 +241,16 @@ public class EvPa implements Listener {
                 metaAtual *= 2;
             }
 
+            // CORREÇÃO: Busca Dinâmica na Lore
             List<String> lore = meta.getLore();
-            // A barra de progresso agora fica na linha 5
-            if (lore != null && lore.size() >= 6) {
-                lore.set(5, gerarBarraProgresso(tier, progressoNoTier, metaAtual));
+            if (lore != null) {
+                for (int i = 0; i < lore.size(); i++) {
+                    // Encontra a linha que tem a barrinha pelo colchete
+                    if (lore.get(i).contains("[") && lore.get(i).contains("]")) {
+                        lore.set(i, gerarBarraProgresso(tier, progressoNoTier, metaAtual));
+                        break;
+                    }
+                }
                 meta.setLore(lore);
             }
 
@@ -267,7 +260,6 @@ public class EvPa implements Listener {
         }
     }
 
-    // --- MÉTODOS AUXILIARES ---
     private boolean ehBlocoDeEscavacao(Material mat) {
         return mat == Material.DIRT || mat == Material.GRASS_BLOCK || mat == Material.SAND ||
                 mat == Material.GRAVEL || mat == Material.COARSE_DIRT || mat == Material.PODZOL ||

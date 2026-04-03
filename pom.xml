@@ -9,7 +9,7 @@
     <version>1.0-beta</version>
     <packaging>jar</packaging>
 
-    <name>Pica</name>
+    <name>GamesAreLife</name>
 
     <properties>
         <java.version>21</java.version>

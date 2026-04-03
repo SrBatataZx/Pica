@@ -235,67 +235,87 @@ public class EvPick implements Listener {
         if (itemHand.getType() == Material.AIR || !itemHand.hasItemMeta()) return;
 
         ItemMeta meta = itemHand.getItemMeta();
+        converterPicaretaAntiga(itemHand, meta);
 
-        if (meta != null) {
-            // Atualiza a picareta no momento em que ele quebra o primeiro bloco
-            converterPicaretaAntiga(itemHand, meta);
+        if (meta == null) return;
 
-            if (meta.getPersistentDataContainer().has(keyBlocos, PersistentDataType.INTEGER)) {
+        converterPicaretaAntiga(itemHand, meta);
 
-                if (plugin.getConfig().getBoolean("sistema_coleta_ativa", true)) {
-                    event.setDropItems(false);
+        // Verifica se é uma Picareta do Sistema (tem a tag de blocos)
+        if (meta.getPersistentDataContainer().has(keyBlocos, PersistentDataType.INTEGER)) {
 
-                    List<ItemStack> drops = new ArrayList<>(event.getBlock().getDrops(itemHand));
-                    List<ItemStack> dropsEspeciais = gerarDropsEspeciais();
-                    if (dropsEspeciais != null) drops.addAll(dropsEspeciais);
+            // 1. SORTEIO DE DROPS ESPECIAIS (Independente de ser pedra ou não)
+            List<ItemStack> dropsParaEntregar = new ArrayList<>();
+            List<ItemStack> sorteados = gerarDropsEspeciais();
+            if (sorteados != null) dropsParaEntregar.addAll(sorteados);
 
-                    int estadoLixeira = meta.getPersistentDataContainer().getOrDefault(keyLixeira, PersistentDataType.INTEGER, 0);
-                    String filtroStr = meta.getPersistentDataContainer().getOrDefault(keyFiltro, PersistentDataType.STRING, "");
+            // 2. LÓGICA DE COLETA AUTOMÁTICA E LIXEIRA
+            if (plugin.getConfig().getBoolean("sistema_coleta_ativa", true)) {
+                // Cancela os drops no chão para coletar no inventário
+                event.setDropItems(false);
 
-                    if (estadoLixeira == 1 && !filtroStr.isEmpty()) {
-                        List<String> listaFiltro = Arrays.asList(filtroStr.split(","));
-                        drops.removeIf(item -> listaFiltro.contains(item.getType().name()));
+                // Adiciona os drops normais do bloco quebrado
+                dropsParaEntregar.addAll(event.getBlock().getDrops(itemHand));
+
+                int estadoLixeira = meta.getPersistentDataContainer().getOrDefault(keyLixeira, PersistentDataType.INTEGER, 0);
+                String filtroStr = meta.getPersistentDataContainer().getOrDefault(keyFiltro, PersistentDataType.STRING, "");
+
+                // Aplica o Filtro da Lixeira
+                if (estadoLixeira == 1 && !filtroStr.isEmpty()) {
+                    List<String> listaFiltro = Arrays.asList(filtroStr.split(","));
+                    dropsParaEntregar.removeIf(item -> listaFiltro.contains(item.getType().name()));
+                }
+
+                // Entrega os itens ao jogador
+                HashMap<Integer, ItemStack> sobrou = player.getInventory().addItem(dropsParaEntregar.toArray(new ItemStack[0]));
+
+                // Se o inventário encher, dropa o que sobrou no chão
+                if (!sobrou.isEmpty()) {
+                    Location loc = event.getBlock().getLocation();
+                    for (ItemStack item : sobrou.values()) {
+                        loc.getWorld().dropItemNaturally(loc, item);
                     }
-
-                    HashMap<Integer, ItemStack> sobrou = player.getInventory().addItem(drops.toArray(new ItemStack[0]));
-
-                    if (!sobrou.isEmpty()) {
-                        Location loc = event.getBlock().getLocation();
-                        for (ItemStack item : sobrou.values()) {
-                            loc.getWorld().dropItemNaturally(loc, item);
-                        }
+                }
+            } else {
+                // Se a coleta ativa estiver DESLIGADA, dropa os itens sorteados no chão
+                if (!dropsParaEntregar.isEmpty()) {
+                    Location loc = event.getBlock().getLocation();
+                    for (ItemStack item : dropsParaEntregar) {
+                        loc.getWorld().dropItemNaturally(loc, item);
                     }
                 }
-
-                Material tipoBloco = event.getBlock().getType();
-                if (!ehPedra(tipoBloco)) return;
-
-                int blocosTotais = meta.getPersistentDataContainer().getOrDefault(keyBlocos, PersistentDataType.INTEGER, 0);
-                blocosTotais++;
-                meta.getPersistentDataContainer().set(keyBlocos, PersistentDataType.INTEGER, blocosTotais);
-
-                int metaAtual = plugin.getConfig().getInt("blocos_iniciais", 50);
-                int tier = 0;
-                int progressoNoTier = blocosTotais;
-
-                while (progressoNoTier >= metaAtual && tier < 5) {
-                    progressoNoTier -= metaAtual;
-                    tier++;
-                    metaAtual *= 2;
-                }
-
-                List<String> lore = meta.getLore();
-                if (lore != null && lore.size() >= 5) {
-                    lore.set(4, gerarBarraProgresso(tier, progressoNoTier, metaAtual));
-                    meta.setLore(lore);
-                }
-
-                itemHand.setItemMeta(meta);
-                tentarEncantar(itemHand, player);
-                evoluirPicareta(itemHand, tier, player);
             }
+
+
+            Material tipoBloco = event.getBlock().getType();
+            if (!ehPedra(tipoBloco)) return;
+
+            int blocosTotais = meta.getPersistentDataContainer().getOrDefault(keyBlocos, PersistentDataType.INTEGER, 0);
+            blocosTotais++;
+            meta.getPersistentDataContainer().set(keyBlocos, PersistentDataType.INTEGER, blocosTotais);
+
+            int metaAtual = plugin.getConfig().getInt("blocos_iniciais", 50);
+            int tier = 0;
+            int progressoNoTier = blocosTotais;
+
+            while (progressoNoTier >= metaAtual && tier < 5) {
+                progressoNoTier -= metaAtual;
+                tier++;
+                metaAtual *= 2;
+            }
+
+            List<String> lore = meta.getLore();
+            if (lore != null && lore.size() >= 5) {
+                lore.set(4, gerarBarraProgresso(tier, progressoNoTier, metaAtual));
+                meta.setLore(lore);
+            }
+
+            itemHand.setItemMeta(meta);
+            tentarEncantar(itemHand, player);
+            evoluirPicareta(itemHand, tier, player);
         }
     }
+
 
     // --- MÉTODOS AUXILIARES INALTERADOS ---
     private boolean ehPedra(Material mat) {

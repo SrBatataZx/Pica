@@ -1,4 +1,4 @@
-package srbatata.gamesarelife;
+package srbatata.gamesarelife.sistemas;
 
 import org.bukkit.Location;
 import org.bukkit.command.Command;

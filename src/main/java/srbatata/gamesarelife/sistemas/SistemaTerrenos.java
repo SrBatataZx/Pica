@@ -1,4 +1,4 @@
-package srbatata.gamesarelife;
+package srbatata.gamesarelife.sistemas;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -16,6 +16,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockIgniteEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -529,6 +532,51 @@ public class SistemaTerrenos implements Listener, CommandExecutor {
                     event.setCancelled(true);
                     event.getPlayer().sendMessage("§cEste terreno é protegido!");
                 }
+            }
+        }
+    }
+    // ==========================================
+// 4. PROTEÇÃO CONTRA FOGO
+// ==========================================
+
+    /**
+     * Impede que jogadores usem isqueiro ou que o fogo comece por causas externas
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void aoAcenderFogo(BlockIgniteEvent event) {
+        // Se foi um jogador que tentou acender
+        if (event.getPlayer() != null) {
+            if (!podeMexer(event.getPlayer(), event.getBlock().getLocation())) {
+                event.setCancelled(true);
+                event.getPlayer().sendMessage("§cVocê não pode acender fogo neste terreno!");
+            }
+        } else {
+            // Se o fogo começou por raio, lava ou espalhamento natural
+            if (isBlocoProtegido(event.getBlock().getLocation())) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    /**
+     * Impede que blocos dentro do terreno sejam consumidos pelo fogo
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void aoQueimarBloco(BlockBurnEvent event) {
+        if (isBlocoProtegido(event.getBlock().getLocation())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * Impede que o fogo (ou vinhas/fogo) se espalhe para dentro de um terreno
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void aoEspalharFogo(BlockSpreadEvent event) {
+        // Verifica se o bloco de destino está protegido
+        if (event.getSource().getType() == Material.FIRE || event.getSource().getType() == Material.SOUL_FIRE) {
+            if (isBlocoProtegido(event.getBlock().getLocation())) {
+                event.setCancelled(true);
             }
         }
     }

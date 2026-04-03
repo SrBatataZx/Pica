@@ -7,7 +7,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.gamesarelife.SistemaTerrenos;
+import srbatata.gamesarelife.sistemas.SistemaTerrenos;
 import srbatata.gamesarelife.armor.CustomArmor;
 import srbatata.gamesarelife.armor.abilityconstructor.ExplorerAbility;
 import srbatata.gamesarelife.core.Principal;

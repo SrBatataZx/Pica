@@ -3,7 +3,7 @@ package srbatata.gamesarelife.armor.abilityconstructor;
 import org.bukkit.GameMode;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
-import srbatata.gamesarelife.SistemaTerrenos;
+import srbatata.gamesarelife.sistemas.SistemaTerrenos;
 import srbatata.gamesarelife.armor.Ability; // Certifique-se de usar a interface Ability
 
 public class ExplorerAbility implements Ability {

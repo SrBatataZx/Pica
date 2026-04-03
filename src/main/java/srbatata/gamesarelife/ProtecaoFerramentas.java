@@ -26,18 +26,21 @@ public class ProtecaoFerramentas implements Listener {
     private final Principal plugin;
     private final NamespacedKey keyPicareta;
     private final NamespacedKey keyMachado;
+    private  final NamespacedKey keyPa;
 
     public ProtecaoFerramentas(Principal plugin) {
         this.plugin = plugin;
         this.keyPicareta = new NamespacedKey(plugin, "blocos_quebrados");
         this.keyMachado = new NamespacedKey(plugin, "blocos_quebrados_machado");
+        this.keyPa = new NamespacedKey(plugin, "blocos_quebrados_pa");
     }
 
     // Método auxiliar para saber se o item é uma das nossas ferramentas
     private boolean isProtegido(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return false;
         return item.getItemMeta().getPersistentDataContainer().has(keyPicareta, PersistentDataType.INTEGER) ||
-                item.getItemMeta().getPersistentDataContainer().has(keyMachado, PersistentDataType.INTEGER);
+                item.getItemMeta().getPersistentDataContainer().has(keyMachado, PersistentDataType.INTEGER) ||
+                item.getItemMeta().getPersistentDataContainer().has(keyPa, PersistentDataType.INTEGER);
     }
 
     // 1. Impede de jogar no chão (Tecla Q)
@@ -50,18 +53,23 @@ public class ProtecaoFerramentas implements Listener {
     }
 
     // 2. Impede de colocar em Baús, Fornalhas, etc.
+// Substitua o seu evento onClick na classe ProtecaoFerramentas por este:
     @EventHandler
     public void onClick(InventoryClickEvent event) {
         if (event.getClickedInventory() == null) return;
         Player player = (Player) event.getWhoClicked();
 
+        // EXCEÇÃO: Se o jogador estiver com o Armazém aberto, não bloqueia a movimentação!
+        if (event.getView().getTitle().equals("§8Armazém do Aprendiz")) {
+            return; // Deixa o evento passar. A classe do Armazém fará a validação.
+        }
+
         // Se o jogador usar "Shift + Clique" para mandar rápido pro baú
         if (event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
             if (isProtegido(event.getCurrentItem())) {
-                // Só bloqueia se o outro inventário não for o próprio inventário do jogador (CRAFTING)
                 if (event.getView().getTopInventory().getType() != InventoryType.CRAFTING) {
                     event.setCancelled(true);
-                    player.sendMessage("§cVocê não pode guardar esta ferramenta!");
+                    player.sendMessage("§cVocê não pode guardar esta ferramenta aqui!");
                 }
             }
         }
@@ -70,15 +78,15 @@ public class ProtecaoFerramentas implements Listener {
         if (event.getClickedInventory().equals(event.getView().getTopInventory()) && event.getView().getTopInventory().getType() != InventoryType.CRAFTING) {
             if (isProtegido(event.getCursor())) {
                 event.setCancelled(true);
-                player.sendMessage("§cVocê não pode guardar esta ferramenta!");
+                player.sendMessage("§cVocê não pode guardar esta ferramenta aqui!");
             }
 
-            // Impede de usar os atalhos do teclado (1-9) para trocar o item direto pro baú
+            // Impede de usar os atalhos do teclado (1-9)
             if (event.getClick() == ClickType.NUMBER_KEY) {
                 ItemStack itemNaHotbar = player.getInventory().getItem(event.getHotbarButton());
                 if (isProtegido(itemNaHotbar)) {
                     event.setCancelled(true);
-                    player.sendMessage("§cVocê não pode guardar esta ferramenta!");
+                    player.sendMessage("§cVocê não pode guardar esta ferramenta aqui!");
                 }
             }
         }

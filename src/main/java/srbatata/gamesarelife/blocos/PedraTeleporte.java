@@ -98,55 +98,86 @@ public class PedraTeleporte implements Listener {
             String[] partes = waystoneData.split(";");
             String donoUUID = partes.length > 1 ? partes[1] : "";
 
-            // Verifica se o jogador é o dono OU se tem permissão de administrador para quebrar de qualquer forma
+            // 1. Verificação de permissão
             if (!donoUUID.equals(player.getUniqueId().toString()) && !player.hasPermission("waystone.admin")) {
                 event.setCancelled(true);
-                player.sendMessage(Component.text("Você não é o dono desta Pedra de Teleporte!").color(NamedTextColor.RED));
+                player.sendMessage(Component.text("Você não é o dono dessa Pedra de Teleporte!").color(NamedTextColor.RED));
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                 return;
             }
 
-            // Se passou pela verificação, permite quebrar
-            gereWaystone.removerWaystone(waystoneData); // Remove a string inteira do arquivo
+            // --- CORREÇÃO AQUI ---
+
+            // 2. Remove a Waystone da memória/arquivo
+            gereWaystone.removerWaystone(waystoneData);
+
+            // 3. Impede QUALQUER drop natural do bloco (evita dropar magnetita comum)
             event.setDropItems(false);
+            event.getBlock().setType(Material.AIR); // Força o bloco a virar ar imediatamente
+
+            // 4. Dropa o item correto com as chaves PDC (PersistentDataContainer)
             loc.getWorld().dropItemNaturally(loc, getPedraTeleporteItem());
+
             player.sendMessage(Component.text("Waystone destruída e recuperada!").color(NamedTextColor.YELLOW));
+            player.playSound(player.getLocation(), Sound.BLOCK_STONE_BREAK, 1.0f, 0.8f);
         }
     }
 
     @EventHandler
+    public void onExplode(org.bukkit.event.entity.EntityExplodeEvent event) {
+        // Remove as Waystones da lista de blocos a serem destruídos por explosões
+        event.blockList().removeIf(block -> {
+            String locString = serializarLocation(block.getLocation());
+            return getWaystoneData(locString) != null;
+        });
+    }
+
+    @EventHandler
     public void onInteract(PlayerInteractEvent event) {
+        // 1. Validações básicas (Mão principal e se clicou em um bloco)
         if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+        if (event.getClickedBlock() == null) return;
 
         Location loc = event.getClickedBlock().getLocation();
         String locString = serializarLocation(loc);
 
+        // 2. Verifica se o bloco clicado é de fato uma Waystone registrada no servidor
         if (getWaystoneData(locString) != null) {
             event.setCancelled(true);
             Player player = event.getPlayer();
             UUID uuid = player.getUniqueId();
 
+            // Pegamos a lista de waystones que o jogador já salvou
             String salvas = player.getPersistentDataContainer().getOrDefault(SAVED_WAYSTONES_KEY, PersistentDataType.STRING, "");
 
+            // --- LÓGICA DE REMOÇÃO (SHIFT + CLIQUE) ---
+            if (player.isSneaking()) {
+                if (removerWaystoneDoJogador(player, locString)) {
+                    player.sendMessage(Component.text("Você apagou a localização dessa Pedra de Teleporte.").color(NamedTextColor.YELLOW));
+                    player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_BREAK, 0.5f, 1.5f);
+                } else {
+                    player.sendMessage(Component.text("Você ainda não memorizou essa Pedra.").color(NamedTextColor.RED));
+                }
+                return; // Encerra aqui para não disparar o salvamento abaixo
+            }
+
+            // --- LÓGICA DE SALVAMENTO (CLIQUE NORMAL) ---
             if (salvas.contains(locString)) {
-                player.sendMessage(Component.text("Você já memorizou esta Pedra de Teleporte!").color(NamedTextColor.RED));
+                player.sendMessage(Component.text("Você já salvou essa Pedra de Teleporte!").color(NamedTextColor.RED));
                 return;
             }
 
-            // Adiciona o jogador no mapa de espera
+            // Adiciona o jogador no mapa de espera para o nome
             aguardandoNome.put(uuid, locString);
-            player.sendMessage(Component.text("Digite no chat o nome que deseja dar a esta Waystone (Ex: Minha Base). Você tem 30 segundos!").color(NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("Digite no chat o nome para esta Pedra de Teleporte. (30s)").color(NamedTextColor.YELLOW));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
 
-            // AGENDADOR DE TIMEOUT (30 segundos = 600 ticks)
+            // Timeout (permanece igual)
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                // Se após 30 segundos o jogador ainda estiver no mapa, o tempo esgotou
                 if (aguardandoNome.containsKey(uuid)) {
-                    // Remove do mapa de espera para liberar o chat dele
                     String locPendente = aguardandoNome.remove(uuid);
-
                     if (player.isOnline()) {
-                        player.sendMessage(Component.text("Tempo esgotado! A Waystone foi salva com um nome padrão.").color(NamedTextColor.GRAY));
+                        player.sendMessage(Component.text("Tempo esgotado! Nome padrão aplicado.").color(NamedTextColor.GRAY));
                         efetuarSalvamentoWaystone(player, locPendente, "Local Desconhecido");
                     }
                 }
@@ -213,7 +244,31 @@ public class PedraTeleporte implements Listener {
 
         player.getPersistentDataContainer().set(SAVED_WAYSTONES_KEY, PersistentDataType.STRING, salvas);
 
-        player.sendMessage(Component.text("Local memorizado como: " + nomeEscolhido + "!").color(NamedTextColor.AQUA));
+        player.sendMessage(Component.text("Local salvo como: " + nomeEscolhido + "!").color(NamedTextColor.AQUA));
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+    }
+    private boolean removerWaystoneDoJogador(Player player, String locString) {
+        String salvas = player.getPersistentDataContainer().getOrDefault(SAVED_WAYSTONES_KEY, PersistentDataType.STRING, "");
+
+        if (salvas.isEmpty() || !salvas.contains(locString)) return false;
+
+        // Transformamos em uma lista para facilitar a remoção exata
+        // Formato salvo: mundo,x,y,z@Nome;mundo2,x2,y2,z2@Nome2
+        List<String> listaArray = new ArrayList<>(Arrays.asList(salvas.split(";")));
+        boolean removido = listaArray.removeIf(entrada -> entrada.startsWith(locString));
+
+        if (removido) {
+            // Unimos novamente a String usando o delimitador ';'
+            String novaString = String.join(";", listaArray);
+
+            if (novaString.isEmpty()) {
+                player.getPersistentDataContainer().remove(SAVED_WAYSTONES_KEY);
+            } else {
+                player.getPersistentDataContainer().set(SAVED_WAYSTONES_KEY, PersistentDataType.STRING, novaString);
+            }
+            return true;
+        }
+
+        return false;
     }
 }

@@ -36,15 +36,6 @@ public class ComandoMoney implements CommandExecutor {
             jogador.sendMessage(ChatColor.GREEN + "Seu saldo é: " + ChatColor.YELLOW + economia.format(saldo));
             return true;
         }
-
-        // Comando: /money <jogador> (Vê o saldo de outro jogador)
-        if (args.length == 1) {
-            OfflinePlayer alvo = Bukkit.getOfflinePlayer(args[0]);
-            double saldoAlvo = economia.getBalance(alvo);
-            jogador.sendMessage(ChatColor.GREEN + "Saldo de " + alvo.getName() + ": " + ChatColor.YELLOW + economia.format(saldoAlvo));
-            return true;
-        }
-
         // Comando: /money pay <jogador> <quantia> (Envia dinheiro)
         if (args.length == 3 && args[0].equalsIgnoreCase("pay")) {
             OfflinePlayer alvo = Bukkit.getOfflinePlayer(args[1]);

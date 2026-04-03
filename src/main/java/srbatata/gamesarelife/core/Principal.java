@@ -1,13 +1,19 @@
 package srbatata.gamesarelife.core;
 
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
-import srbatata.gamesarelife.armor.ArmorManager;
 import srbatata.gamesarelife.dados.GereWaystone;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +23,6 @@ public final class Principal extends JavaPlugin {
     private File salvosFile;
     private FileConfiguration salvosConfig;
     private EcoGerente gerenciadorContas;
-    private ArmorManager armorManager;
     private GereWaystone gereWaystone; // Nossa nova variável
 
     public static @NotNull String getPlugin() {
@@ -47,6 +52,38 @@ public final class Principal extends JavaPlugin {
         registry.registrarTudo();
 
         getLogger().info("Plugin Principal iniciado com sucesso!");
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                // Verifica se há jogadores online para não processar sem necessidade
+                if (Bukkit.getOnlinePlayers().isEmpty()) return;
+
+                // 1. Criar as linhas de texto simples
+                // Usamos TextComponent para tudo para manter o padrão spigot().sendMessage
+                TextComponent linha1 = new TextComponent("§9§lDISCORD DO SERVIDOR");
+                TextComponent linha2 = new TextComponent("§fJunte-se a nós para novidades, suporte e muito mais!");
+
+                // 2. Montar a linha clicável
+                TextComponent mensagemLink = new TextComponent("§8» §eClique aqui para entrar: ");
+                TextComponent link = new TextComponent("§b§nhttp://discord.gg/euh75ek2nZ");
+
+                // Configurar o clique e o hover (passar o mouse)
+                link.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, "https://discord.gg/euh75ek2nZ"));
+                link.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new net.md_5.bungee.api.chat.hover.content.Text("§aAbrir Discord")));
+
+                mensagemLink.addExtra(link);
+
+                // Envia para todos online
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.sendMessage(""); // Linha em branco estética
+                    p.spigot().sendMessage(linha1);
+                    p.spigot().sendMessage(linha2);
+                    p.spigot().sendMessage(mensagemLink);
+                    p.sendMessage(""); // Linha em branco estética
+                }
+            }
+        }.runTaskTimer(this, 20L * 60 * 10, 20L * 60 * 10);
     }
 
     @Override

@@ -10,6 +10,8 @@ commands:
     description: Pega a Picareta do Aprendiz
   machado:
     description: Pega o Machado do Aprendiz
+  pa:
+    description: Pega a Pa do Aprendiz
   proteger:
     description: Confirma a criacao de um terreno protegido
   desproteger:
@@ -22,9 +24,6 @@ commands:
     permission: OP
     description: Ativa o modo adm
     usage: /picaretaadmin
-  money:
-    description: Gerencia o seu dinheiro.
-    aliases: [ dinheiro, saldo, bal ]
   sethome:
     description: Marca uma casa
   home:
@@ -52,3 +51,13 @@ commands:
   pvp:
     description: Sistema de duelos PvP.
     usage: /pvp <player/accept/setarea>
+  carteira:
+    description: Verifique seu saldo atual.
+    aliases: [ saldo, money ]
+  pagar:
+    description: Envie dinheiro para outro jogador.
+    aliases: [ pay, transferir ]
+    usage: /pagar <jogador> <quantia>
+  discord:
+    description: Mostra o link do discord
+    usage: /discord

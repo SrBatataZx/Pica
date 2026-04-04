@@ -13,10 +13,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerFishEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.ShapedRecipe;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -26,6 +23,24 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class SistemaPesca implements Listener {
+
+    private static final ItemStack AGUA_TELA;
+    private static final Material[] ICONES_PEIXE = {
+            Material.COD, Material.SALMON, Material.TROPICAL_FISH, Material.PUFFERFISH
+    };
+
+    static {
+        AGUA_TELA = new ItemStack(Material.CYAN_STAINED_GLASS_PANE);
+        ItemMeta meta = AGUA_TELA.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(" ");
+            AGUA_TELA.setItemMeta(meta);
+        }
+    }
+
+    private static class PescaHolder implements InventoryHolder {
+        @Override public Inventory getInventory() { return null; }
+    }
 
     private final Principal plugin;
     private final Economy economia;
@@ -42,7 +57,6 @@ public class SistemaPesca implements Listener {
         this.pesoKey = new NamespacedKey(plugin, "peixe_peso");
         this.valorKey = new NamespacedKey(plugin, "peixe_valor");
         this.varaKey = new NamespacedKey(plugin, "item_vara_especial");
-
         registrarReceita();
     }
 
@@ -50,12 +64,7 @@ public class SistemaPesca implements Listener {
         ItemStack vara = new ItemStack(Material.FISHING_ROD);
         ItemMeta meta = vara.getItemMeta();
         meta.setDisplayName("§b§lVara de Pesca Profissional");
-        meta.setLore(List.of(
-                "§7Vara de alta precisão.",
-                "",
-                "§e[SHIFT + CLIQUE ESQUERDO]",
-                "§7Vender peixes do inventário."
-        ));
+        meta.setLore(List.of("§7Vara de alta precisão.", "", "§e[SHIFT + CLIQUE ESQUERDO]", "§7Vender peixes do inventário."));
         meta.getPersistentDataContainer().set(varaKey, PersistentDataType.BYTE, (byte) 1);
         vara.setItemMeta(meta);
 
@@ -76,8 +85,11 @@ public class SistemaPesca implements Listener {
             event.getHook().remove();
             event.setCancelled(true);
 
-            // 30% de chance de vir lixo
-            if (ThreadLocalRandom.current().nextInt(100) < 30) {
+            // Se estiver com "Sorte no Mar", a chance de vir lixo diminui 5% por nível
+            int sorteNoMar = p.getInventory().getItemInMainHand().getEnchantmentLevel(Enchantment.LUCK_OF_THE_SEA);
+            int chanceLixo = Math.max(5, 30 - (sorteNoMar * 5));
+
+            if (ThreadLocalRandom.current().nextInt(100) < chanceLixo) {
                 darLixo(p);
             } else {
                 abrirMenuPesca(p);
@@ -86,70 +98,77 @@ public class SistemaPesca implements Listener {
     }
 
     private void abrirMenuPesca(Player p) {
-        Inventory inv = Bukkit.createInventory(null, 27, menuNome);
+        ItemStack vara = p.getInventory().getItemInMainHand();
+        int lvlLure = vara.getEnchantmentLevel(Enchantment.LURE);
+
+        // Melhoria LURE: Aumenta o tempo do relógio (Base 10s + 2s por nível)
+        int tempoTotal = 10 + (lvlLure * 2);
+        // Melhoria LURE: Aumenta o tempo que o peixe fica no slot (Fica mais lento/fácil)
+        long delayTicks = 10L + (lvlLure * 2L);
+
+        Inventory inv = Bukkit.createInventory(new PescaHolder(), 27, menuNome);
+        for (int i = 0; i < 27; i++) inv.setItem(i, AGUA_TELA);
         p.openInventory(inv);
 
         new BukkitRunnable() {
-            int ticksExecutados = 0;
-            int segundosRestantes = 10;
+            int segundosRestantes = tempoTotal;
+            int ticksParaSegundo = 0;
+            int ultimoSlotPeixe = -1;
+            final long ticksPorCiclo = delayTicks;
 
             @Override
             public void run() {
-                if (!p.getOpenInventory().getTitle().equals(menuNome)) {
+                if (!(p.getOpenInventory().getTopInventory().getHolder() instanceof PescaHolder)) {
                     peixeSlot.remove(p.getUniqueId());
                     this.cancel();
                     return;
                 }
 
-                // Como roda a cada 10 ticks (0.5s), a cada 2 runs passou 1 segundo
-                if (ticksExecutados > 0 && ticksExecutados % 2 == 0) {
+                // Lógica para decrementar segundos baseada no delay variável
+                ticksParaSegundo += (int) ticksPorCiclo;
+                if (ticksParaSegundo >= 20) {
                     segundosRestantes--;
+                    ticksParaSegundo = 0;
                 }
-                ticksExecutados++;
 
                 if (segundosRestantes <= 0) {
                     p.closeInventory();
-                    p.sendMessage("§c§l[!] §7O peixe escapou! Você demorou demais.");
-                    p.playSound(p.getLocation(), Sound.ENTITY_FISH_SWIM, 1f, 0.5f);
+                    p.sendMessage("§c§l[!] §7O peixe escapou!");
                     this.cancel();
                     return;
                 }
 
-                inv.clear();
+                if (ultimoSlotPeixe != -1) inv.setItem(ultimoSlotPeixe, AGUA_TELA);
 
-                // Info do Tempo
                 ItemStack info = new ItemStack(Material.CLOCK);
                 ItemMeta mI = info.getItemMeta();
                 mI.setDisplayName("§eTempo restante: §f" + segundosRestantes + "s");
                 info.setItemMeta(mI);
                 inv.setItem(4, info);
 
-                // Fundo de Água
-                ItemStack agua = new ItemStack(Material.CYAN_STAINED_GLASS_PANE);
-                ItemMeta mA = agua.getItemMeta(); mA.setDisplayName(" "); agua.setItemMeta(mA);
-                for (int i = 0; i < 27; i++) if (i != 4) inv.setItem(i, agua);
-
-                // Slot do Peixe
                 int slot = ThreadLocalRandom.current().nextInt(27);
                 if (slot == 4) slot = 5;
 
-                Material[] icones = {Material.COD, Material.SALMON, Material.TROPICAL_FISH, Material.PUFFERFISH};
-                ItemStack peixeIcone = new ItemStack(icones[ThreadLocalRandom.current().nextInt(icones.length)]);
-                ItemMeta mP = peixeIcone.getItemMeta();
-                mP.setDisplayName("§6§lFISGUE-ME!");
-                peixeIcone.setItemMeta(mP);
-
-                inv.setItem(slot, peixeIcone);
+                inv.setItem(slot, gerarIconeFisgar());
                 peixeSlot.put(p.getUniqueId(), slot);
+                ultimoSlotPeixe = slot;
 
                 p.playSound(p.getLocation(), Sound.BLOCK_WATER_AMBIENT, 0.3f, 2f);
             }
-        }.runTaskTimer(plugin, 0L, 10L); // Peixe muda a cada 0.5s (Melhor para Bedrock)
+        }.runTaskTimer(plugin, 0L, delayTicks);
+    }
+
+    private ItemStack gerarIconeFisgar() {
+        ItemStack icone = new ItemStack(ICONES_PEIXE[ThreadLocalRandom.current().nextInt(ICONES_PEIXE.length)]);
+        ItemMeta meta = icone.getItemMeta();
+        meta.setDisplayName("§6§lFISGUE-ME!");
+        icone.setItemMeta(meta);
+        return icone;
     }
 
     @EventHandler
     public void aoClicarMenu(InventoryClickEvent event) {
-        if (!event.getView().getTitle().equals(menuNome)) return;
+        if (!(event.getInventory().getHolder() instanceof PescaHolder)) return;
         event.setCancelled(true);
 
         if (!(event.getWhoClicked() instanceof Player p)) return;
@@ -160,67 +179,63 @@ public class SistemaPesca implements Listener {
             peixeSlot.remove(p.getUniqueId());
             p.closeInventory();
 
-            // Entrega o peixe e processa se é lendário
-            p.getInventory().addItem(gerarPeixeUnico(p));
+            ItemStack peixe = gerarPeixeUnico(p);
+            entregarItem(p, peixe);
             p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.5f, 2.0f);
         }
     }
 
-    private ItemStack gerarPeixeUnico(Player p) {
-        int sorte = ThreadLocalRandom.current().nextInt(100);
+    private void entregarItem(Player p, ItemStack item) {
+        var resto = p.getInventory().addItem(item);
+        if (!resto.isEmpty()) {
+            resto.values().forEach(i -> p.getWorld().dropItemNaturally(p.getLocation(), i));
+            p.sendMessage("§6[!] §7Inventário cheio! O item caiu no chão.");
+        }
+    }
 
-        boolean tesouro = sorte < 2;     // 2% de chance de Tesouro
-        boolean lendario = sorte < 7;    // 5% de chance de Lendário (se não for tesouro)
+    private ItemStack gerarPeixeUnico(Player p) {
+        // Melhoria LUCK OF THE SEA: Aumenta as chances de raridade
+        int lvlLuck = p.getInventory().getItemInMainHand().getEnchantmentLevel(Enchantment.LUCK_OF_THE_SEA);
+
+        double chanceTesouro = 2.0 + (lvlLuck * 1.0); // +1% por nível
+        double chanceLendario = 7.0 + (lvlLuck * 3.0); // +3% por nível
+
+        double sorte = ThreadLocalRandom.current().nextDouble(100.0);
 
         Material materialSorteado;
         String nomeExibicao;
         double multiplicadorValor;
         double pesoBase;
 
-        if (tesouro) {
-            // --- LOGICA DE TESOUROS ---
+        if (sorte < chanceTesouro) {
             Material[] itensTesouro = {Material.ENCHANTED_BOOK, Material.NAME_TAG, Material.GOLDEN_APPLE, Material.NAUTILUS_SHELL};
             materialSorteado = itensTesouro[ThreadLocalRandom.current().nextInt(itensTesouro.length)];
             nomeExibicao = "§6§l§nTESOURO PERDIDO";
-            multiplicadorValor = 250.0; // R$ 250,00 por kg
-            pesoBase = 10.0 + (50.0 * ThreadLocalRandom.current().nextDouble()); // Itens pesados e valiosos
-        } else if (lendario) {
-            // --- LOGICA DE LENDÁRIOS ---
-            Material[] peixes = {Material.COD, Material.SALMON, Material.TROPICAL_FISH, Material.PUFFERFISH};
-            materialSorteado = peixes[ThreadLocalRandom.current().nextInt(peixes.length)];
+            multiplicadorValor = 300.0;
+            pesoBase = 10.0 + (50.0 * ThreadLocalRandom.current().nextDouble());
+        } else if (sorte < (chanceTesouro + chanceLendario)) {
+            materialSorteado = ICONES_PEIXE[ThreadLocalRandom.current().nextInt(ICONES_PEIXE.length)];
             nomeExibicao = "§d§l" + materialSorteado.name().replace("_", " ") + " LENDÁRIO";
-            multiplicadorValor = 80.0;
+            multiplicadorValor = 240.0;
             pesoBase = 25.0 + (15.0 * ThreadLocalRandom.current().nextDouble());
         } else {
-            // --- LOGICA DE COMUNS ---
-            Material[] peixes = {Material.COD, Material.SALMON, Material.TROPICAL_FISH, Material.PUFFERFISH};
-            materialSorteado = peixes[ThreadLocalRandom.current().nextInt(peixes.length)];
+            materialSorteado = ICONES_PEIXE[ThreadLocalRandom.current().nextInt(ICONES_PEIXE.length)];
             nomeExibicao = "§6Peixe Comum";
-            multiplicadorValor = 12.5;
+            multiplicadorValor = 40.0;
             pesoBase = 0.5 + (15.0 * ThreadLocalRandom.current().nextDouble());
         }
 
         ItemStack itemResult = new ItemStack(materialSorteado);
         ItemMeta meta = itemResult.getItemMeta();
-
         double valorFinal = pesoBase * multiplicadorValor;
 
-        // Persistência NBT
         meta.getPersistentDataContainer().set(pesoKey, PersistentDataType.DOUBLE, pesoBase);
         meta.getPersistentDataContainer().set(valorKey, PersistentDataType.DOUBLE, valorFinal);
 
-        if (tesouro || lendario) {
+        if (nomeExibicao.contains("LENDÁRIO") || nomeExibicao.contains("TESOURO")) {
             meta.addEnchant(Enchantment.LURE, 1, true);
             meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-
-            // Broadcast Especial
-            String prefixo = tesouro ? "§6§l[TESOURO]" : "§d§l[LENDÁRIO]";
-            Bukkit.broadcastMessage(" ");
-            Bukkit.broadcastMessage(prefixo + " §e" + p.getName() + " §fpescou um(a) §l" + materialSorteado.name().replace("_", " ") + "!");
-            Bukkit.broadcastMessage("§fPeso: §b" + String.format("%.2f", pesoBase) + "kg §f| Valor: §a$" + String.format("%.2f", valorFinal));
-            Bukkit.broadcastMessage(" ");
-
-            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
+            anunciarPescaEspecial(p, materialSorteado, pesoBase, valorFinal, nomeExibicao.contains("TESOURO"));
         } else {
             p.sendMessage("§a§l✔ §fCapturado com sucesso!");
         }
@@ -238,59 +253,14 @@ public class SistemaPesca implements Listener {
         return itemResult;
     }
 
-//    private ItemStack gerarPeixeUnico(Player p) {
-//        // 3% de chance de ser lendário
-//        boolean lendario = ThreadLocalRandom.current().nextInt(100) < 3;
-//
-//        // Lista de todos os peixes possíveis do Minecraft
-//        Material[] tiposDePeixe = {
-//                Material.COD,
-//                Material.SALMON,
-//                Material.TROPICAL_FISH,
-//                Material.PUFFERFISH
-//        };
-//
-//        // Sorteia um dos materiais acima
-//        Material materialSorteado = tiposDePeixe[ThreadLocalRandom.current().nextInt(tiposDePeixe.length)];
-//
-//        ItemStack peixe = new ItemStack(materialSorteado);
-//        ItemMeta meta = peixe.getItemMeta();
-//
-//        // Lógica de Peso e Valor
-//        double peso = (lendario ? 30.0 : 0.5) + (20.0 * ThreadLocalRandom.current().nextDouble());
-//        double valor = peso * (lendario ? 80.0 : 12.5);
-//
-//        meta.getPersistentDataContainer().set(pesoKey, PersistentDataType.DOUBLE, peso);
-//        meta.getPersistentDataContainer().set(valorKey, PersistentDataType.DOUBLE, valor);
-//
-//        if (lendario) {
-//            // Nome dinâmico baseado no tipo do peixe para dar mais imersão
-//            String nomePeixe = materialSorteado.name().replace("_", " ");
-//            meta.setDisplayName("§d§l§k!§5§l " + nomePeixe + " LENDÁRIO §d§l§k!");
-//
-//            meta.addEnchant(Enchantment.LURE, 1, true);
-//            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-//
-//            // MENSAGEM GLOBAL
-//            Bukkit.broadcastMessage(" ");
-//            Bukkit.broadcastMessage("§d§l[PESCA] §fO jogador §e" + p.getName() + " §fpescou um");
-//            Bukkit.broadcastMessage("§d§l" + nomePeixe + " LENDÁRIO §fde §b" + String.format("%.2f", peso) + "kg§f!");
-//            Bukkit.broadcastMessage(" ");
-//
-//            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
-//        } else {
-//            meta.setDisplayName("§6Peixe Comum");
-//            p.sendMessage("§a§l✔ §fCapturado com sucesso!");
-//        }
-//
-//        meta.setLore(List.of(
-//                "§7Peso: §f" + String.format("%.2f", peso) + "kg",
-//                "§7Valor: §a$" + String.format("%.2f", valor)
-//        ));
-//
-//        peixe.setItemMeta(meta);
-//        return peixe;
-//    }
+    private void anunciarPescaEspecial(Player p, Material mat, double peso, double valor, boolean tesouro) {
+        String prefixo = tesouro ? "§6§l[TESOURO]" : "§d§l[LENDÁRIO]";
+        Bukkit.broadcastMessage(" ");
+        Bukkit.broadcastMessage(prefixo + " §e" + p.getName() + " §fpescou um(a) §l" + mat.name().replace("_", " ") + "!");
+        Bukkit.broadcastMessage("§fPeso: §b" + String.format("%.2f", peso) + "kg §f| Valor: §a$" + String.format("%.2f", valor));
+        Bukkit.broadcastMessage(" ");
+        p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
+    }
 
     @EventHandler
     public void aoVenderInteracao(PlayerInteractEvent event) {
@@ -306,20 +276,16 @@ public class SistemaPesca implements Listener {
     private void venderTudo(Player p) {
         double total = 0;
         int count = 0;
-        for (ItemStack item : p.getInventory().getContents()) {
+        for (ItemStack item : p.getInventory().getStorageContents()) {
             if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) continue;
-
             ItemMeta meta = item.getItemMeta();
-            // Pegando valor de forma segura para evitar NullPointerException
             Double valorPeixe = meta.getPersistentDataContainer().get(valorKey, PersistentDataType.DOUBLE);
-
             if (valorPeixe != null) {
                 total += valorPeixe * item.getAmount();
                 count += item.getAmount();
                 item.setAmount(0);
             }
         }
-
         if (count > 0) {
             economia.depositPlayer(p, total);
             p.sendMessage("§a§l[PESCA] §fVendeu §e" + count + " peixe(s) §fpor §a$" + String.format("%.2f", total));
@@ -330,8 +296,9 @@ public class SistemaPesca implements Listener {
     }
 
     private void darLixo(Player p) {
-        p.getInventory().addItem(new ItemStack(Material.BONE));
-        p.sendMessage("§7[!] Voce pegou lixo, mais sorte na proxima...");
+        ItemStack lixo = new ItemStack(Material.KELP);
+        entregarItem(p, lixo);
+        p.sendMessage("§7[!] Você pegou lixo, mais sorte na próxima...");
         p.playSound(p.getLocation(), Sound.BLOCK_GRAVEL_BREAK, 1f, 1f);
     }
 }

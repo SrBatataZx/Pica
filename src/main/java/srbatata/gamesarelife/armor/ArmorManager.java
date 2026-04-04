@@ -3,7 +3,6 @@ package srbatata.gamesarelife.armor;
 import org.bukkit.Bukkit;
 import srbatata.gamesarelife.sistemas.SistemaTerrenos;
 import srbatata.gamesarelife.armor.armorconstruct.ExplorerArmor;
-import srbatata.gamesarelife.armor.armorconstruct.FireArmor;
 import srbatata.gamesarelife.armor.armorconstruct.minerarmor.MinerBoots;
 import srbatata.gamesarelife.armor.armorconstruct.minerarmor.MinerChestplate;
 import srbatata.gamesarelife.armor.armorconstruct.minerarmor.MinerHelmet;
@@ -33,7 +32,6 @@ public class ArmorManager {
     private void registerArmors(Principal plugin, SistemaTerrenos terrenos) {
         // Adicione aqui suas novas armaduras futuramente
         registeredArmors.add(new ExplorerArmor(plugin, terrenos));
-        registeredArmors.add(new FireArmor(plugin));
         registeredArmors.add(new MinerChestplate(plugin));
         registeredArmors.add(new MinerHelmet(plugin));
         registeredArmors.add(new MinerBoots(plugin));

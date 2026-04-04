@@ -6,6 +6,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
@@ -128,5 +130,12 @@ public class SistemaTPA implements CommandExecutor {
         }
 
         return false;
+    }
+    // No SistemaTPA.java, adicione o Listener e limpe os dados
+    @EventHandler
+    public void aoSair(PlayerQuitEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        pedidosTpa.remove(uuid); // Remove pedidos pendentes para quem saiu
+        cooldowns.remove(uuid);  // Opcional: limpa cooldown ao sair
     }
 }

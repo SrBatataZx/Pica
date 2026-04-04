@@ -36,11 +36,9 @@ public class ComandoMoney implements CommandExecutor {
             jogador.sendMessage(ChatColor.GREEN + "Seu saldo é: " + ChatColor.YELLOW + economia.format(saldo));
             return true;
         }
-        // Comando: /money pay <jogador> <quantia> (Envia dinheiro)
         if (args.length == 3 && args[0].equalsIgnoreCase("pay")) {
             OfflinePlayer alvo = Bukkit.getOfflinePlayer(args[1]);
 
-            // Impede o jogador de enviar dinheiro para si mesmo
             if (alvo.getUniqueId().equals(jogador.getUniqueId())) {
                 jogador.sendMessage(ChatColor.RED + "Você não pode enviar dinheiro para si mesmo.");
                 return true;

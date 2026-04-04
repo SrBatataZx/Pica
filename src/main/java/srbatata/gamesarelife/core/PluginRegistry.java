@@ -24,7 +24,11 @@ public class PluginRegistry {
 
     private final Principal plugin;
     private final EcoImplement economia;
-    private final GereWaystone gereWaystone; // Nova dependência
+    private final GereWaystone gereWaystone;
+
+    // [MELHORIA] Guardar instâncias de sistemas que precisam ser desligados/salvos
+    private SistemaTerrenos terrenos;
+    // Se no futuro criar um desativar() pro ArmorManager ou TPA, adicione as variáveis aqui também.
 
     public PluginRegistry(Principal plugin, EcoImplement economia, GereWaystone gereWaystone) {
         this.plugin = plugin;
@@ -35,7 +39,9 @@ public class PluginRegistry {
     public void registrarTudo() {
 
         // --- 1. SISTEMAS QUE DEPENDEM DE OUTROS ---
-        SistemaTerrenos terrenos = new SistemaTerrenos(plugin);
+        // Salva na variável global da classe em vez de variável local
+        this.terrenos = new SistemaTerrenos(plugin);
+
         SistemaMissoes missoes = new SistemaMissoes(plugin, economia);
         MenuLoja loja = new MenuLoja(plugin, economia, terrenos);
         SistemaKits kits = new SistemaKits(plugin);
@@ -44,7 +50,8 @@ public class PluginRegistry {
         MenuPerfil menuPerfil = new MenuPerfil(plugin, missoes, armazemAprendiz, economia.dados());
         MenuPrincipal menuPrincipal = new MenuPrincipal(plugin, menuPerfil, loja, kits);
 
-        new ArmorManager(plugin, terrenos);
+        new ArmorManager(plugin, terrenos); // Considere dar um 'desativar()' pra ele futuramente se tiver schedulers
+
         // --- 2. REGISTRO DE COMANDOS ---
         regCmd("picareta", new EvAutoColeta(plugin));
         regCmd("picaretaadmin", new EvAutoColeta(plugin));
@@ -54,8 +61,8 @@ public class PluginRegistry {
         regCmd("picareload", new ComandoRecarregar(plugin));
         regCmd("menu", menuPrincipal);
 
-        // Terrenos
-        regCmd("terreno", terrenos);
+        // Terrenos (Usando a variável de classe)
+        regCmd("terreno", this.terrenos);
 
         // Teleporte e Utilidades
         SistemaBack back = new SistemaBack(plugin);
@@ -90,7 +97,7 @@ public class PluginRegistry {
         regEvt(new EvAxe(plugin));
         regEvt(new EvPa(plugin));
         regEvt(new ProtecaoFerramentas(plugin));
-        regEvt(terrenos);
+        regEvt(this.terrenos);
         regEvt(missoes);
         regEvt(loja);
         regEvt(kits);
@@ -102,9 +109,17 @@ public class PluginRegistry {
         regEvt(new SistemaPesca(plugin, economia));
         regEvt(new SistemaMochila(plugin));
         regEvt(new SistemaLojaPlacas(plugin, economia, terrenos));
+        regEvt(new SistemaChatLuckPerms());
     }
 
-    // Atalhos para economizar código
+    // [NOVO] Método para desligar os sistemas com segurança
+    public void desativarSistemas() {
+        if (this.terrenos != null) {
+            this.terrenos.desativar();
+        }
+    }
+
+    // Atalhos
     private void regCmd(String nome, CommandExecutor executor) {
         if (plugin.getCommand(nome) != null) {
             plugin.getCommand(nome).setExecutor(executor);

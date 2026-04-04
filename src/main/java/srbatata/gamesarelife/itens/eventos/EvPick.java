@@ -1,4 +1,4 @@
-package srbatata.gamesarelife.itens.eventos;
+package srbatata.gamesarelife.itens.eventos; // Mude para seu pacote
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -13,16 +14,20 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.gamesarelife.FiltroHolder;
+import srbatata.gamesarelife.util.ConfigHolder;
+import srbatata.gamesarelife.util.FiltroHolder;
 import srbatata.gamesarelife.core.Principal;
+import srbatata.gamesarelife.sistemas.SistemaTerrenos; // ATENÇÃO AQUI: Importar sua classe
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,37 +38,29 @@ public class EvPick implements Listener {
 
     private final Principal plugin;
 
-    // CHAVES NOVAS (Usadas para novas picaretas com o nome atual do plugin)
     private final NamespacedKey keyBlocos;
     private final NamespacedKey keyLixeira;
     private final NamespacedKey keyFiltro;
 
-    // CHAVES ANTIGAS (Usadas para identificar picaretas velhas e convertê-las)
     private final NamespacedKey keyBlocosAntiga;
     private final NamespacedKey keyLixeiraAntiga;
     private final NamespacedKey keyFiltroAntiga;
 
+    // NOVO BÔNUS DE PROTEÇÃO GERAL CONTRA EXPLOIT DE COLOCAR BLOCO FORA DA CLAN
+    private final String META_COLOCADO = "colocado_pelo_jogador_picareta";
+
     public EvPick(Principal plugin) {
         this.plugin = plugin;
 
-        // Chaves Padrão (GamesAreLife)
         this.keyBlocos = new NamespacedKey(plugin, "blocos_quebrados");
         this.keyLixeira = new NamespacedKey(plugin, "modo_lixeira");
         this.keyFiltro = new NamespacedKey(plugin, "lixeira_filtro");
 
-        // Chaves Legadas (Pica)
         this.keyBlocosAntiga = NamespacedKey.fromString("pica:blocos_quebrados");
         this.keyLixeiraAntiga = NamespacedKey.fromString("pica:modo_lixeira");
         this.keyFiltroAntiga = NamespacedKey.fromString("pica:lixeira_filtro");
     }
 
-    // ==========================================
-    // SISTEMA DE MIGRAÇÃO (NOVIDADE)
-    // ==========================================
-    /**
-     * Verifica se a picareta tem dados do plugin antigo.
-     * Se tiver, copia os dados para as chaves novas e apaga as antigas permanentemente.
-     */
     private void converterPicaretaAntiga(ItemStack item, ItemMeta meta) {
         boolean modificou = false;
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
@@ -90,7 +87,19 @@ public class EvPick implements Listener {
     }
 
     // ==========================================
-    // EVENTO 1: ABRIR MENU (SHIFT+CLICK) OU ALTERNAR LIXEIRA (CLICK)
+    // PREVENÇÃO EXTRA: Etiqueta blocos colocados
+    // ==========================================
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockPlace(BlockPlaceEvent event) {
+        Block block = event.getBlock();
+        // Se colocar um minério ou pedra que a picareta uparia, ele ganha uma etiqueta
+        if (ehPedra(block.getType())) {
+            block.setMetadata(META_COLOCADO, new FixedMetadataValue(plugin, true));
+        }
+    }
+
+    // ==========================================
+    // EVENTO 1: ABRIR MENU DE CONFIGURAÇÃO (SHIFT+CLICK)
     // ==========================================
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
@@ -104,36 +113,11 @@ public class EvPick implements Listener {
 
             if (item.getType() != Material.AIR && item.hasItemMeta()) {
                 ItemMeta meta = item.getItemMeta();
-
-                // Antes de qualquer coisa, tentamos atualizar a picareta se for velha
                 converterPicaretaAntiga(item, meta);
 
                 if (meta.getPersistentDataContainer().has(keyLixeira, PersistentDataType.INTEGER)) {
-
                     if (player.isSneaking()) {
-                        abrirMenuFiltro(player, item);
-                        return;
-                    }
-
-                    int estadoLixeira = meta.getPersistentDataContainer().getOrDefault(keyLixeira, PersistentDataType.INTEGER, 0);
-                    int novoEstado = (estadoLixeira == 0) ? 1 : 0;
-
-                    meta.getPersistentDataContainer().set(keyLixeira, PersistentDataType.INTEGER, novoEstado);
-
-                    List<String> lore = meta.getLore();
-                    if (lore != null && lore.size() >= 5) {
-                        lore.set(2, novoEstado == 1 ? "§fModo Lixeira: §aAtivado" : "§fModo Lixeira: §cDesativado");
-                        meta.setLore(lore);
-                    }
-
-                    item.setItemMeta(meta);
-
-                    if (novoEstado == 1) {
-                        player.sendMessage("§aModo Lixeira ATIVADO!");
-                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
-                    } else {
-                        player.sendMessage("§cModo Lixeira DESATIVADO!");
-                        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 0.5f);
+                        abrirMenuConfiguracao(player, item);
                     }
                 }
             }
@@ -141,14 +125,55 @@ public class EvPick implements Listener {
     }
 
     // ==========================================
-    // EVENTO 2: LÓGICA DE CLIQUES NO MENU DE FILTRO
+    // EVENTO 2: LÓGICA DE CLIQUES NOS MENUS (CONFIG E FILTRO)
     // ==========================================
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().getTopInventory().getHolder() instanceof FiltroHolder) {
+        Inventory topInv = event.getView().getTopInventory();
+        Player player = (Player) event.getWhoClicked();
+
+        if (topInv.getHolder() instanceof ConfigHolder) {
             event.setCancelled(true);
 
-            Player player = (Player) event.getWhoClicked();
+            if (event.getClickedInventory() == null || !event.getClickedInventory().equals(topInv)) return;
+
+            ItemStack picareta = player.getInventory().getItemInMainHand();
+            if (picareta.getType() == Material.AIR || !picareta.hasItemMeta()) return;
+
+            ItemMeta meta = picareta.getItemMeta();
+            converterPicaretaAntiga(picareta, meta);
+
+            if (event.getSlot() == 11) {
+                int estadoLixeira = meta.getPersistentDataContainer().getOrDefault(keyLixeira, PersistentDataType.INTEGER, 0);
+                int novoEstado = (estadoLixeira == 0) ? 1 : 0;
+
+                meta.getPersistentDataContainer().set(keyLixeira, PersistentDataType.INTEGER, novoEstado);
+
+                List<String> lore = meta.getLore();
+                if (lore != null && lore.size() >= 5) {
+                    lore.set(2, novoEstado == 1 ? "§fModo Lixeira: §aAtivado" : "§fModo Lixeira: §cDesativado");
+                    meta.setLore(lore);
+                }
+
+                picareta.setItemMeta(meta);
+
+                if (novoEstado == 1) {
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
+                } else {
+                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 0.5f);
+                }
+
+                abrirMenuConfiguracao(player, picareta);
+            }
+            else if (event.getSlot() == 15) {
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+                abrirMenuFiltro(player, picareta);
+            }
+            return;
+        }
+
+        if (topInv.getHolder() instanceof FiltroHolder) {
+            event.setCancelled(true);
             ItemStack clickedItem = event.getCurrentItem();
 
             if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
@@ -157,7 +182,7 @@ public class EvPick implements Listener {
             if (picareta.getType() == Material.AIR || !picareta.hasItemMeta()) return;
 
             ItemMeta meta = picareta.getItemMeta();
-            converterPicaretaAntiga(picareta, meta); // Atualiza se necessário
+            converterPicaretaAntiga(picareta, meta);
 
             if (!meta.getPersistentDataContainer().has(keyLixeira, PersistentDataType.INTEGER)) return;
 
@@ -169,16 +194,16 @@ public class EvPick implements Listener {
             boolean modificou = false;
 
             if (event.getClickedInventory() != null && event.getClickedInventory().equals(event.getView().getBottomInventory())) {
-                if (!listaFiltro.contains(tipoBloco.name())) {
+                if (!listaFiltro.contains(tipoBloco.name()) && tipoBloco.isItem()) {
                     listaFiltro.add(tipoBloco.name());
                     player.sendMessage("§a[+] §fAdicionado §e" + tipoBloco.name() + " §fao filtro da lixeira.");
                     player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.5f);
                     modificou = true;
-                } else {
+                } else if (listaFiltro.contains(tipoBloco.name())) {
                     player.sendMessage("§cEsse item já está no filtro!");
                 }
             }
-            else if (event.getClickedInventory() != null && event.getClickedInventory().equals(event.getView().getTopInventory())) {
+            else if (event.getClickedInventory() != null && event.getClickedInventory().equals(topInv)) {
                 if (listaFiltro.contains(tipoBloco.name())) {
                     listaFiltro.remove(tipoBloco.name());
                     player.sendMessage("§c[-] §fRemovido §e" + tipoBloco.name() + " §fdo filtro da lixeira.");
@@ -196,13 +221,36 @@ public class EvPick implements Listener {
     }
 
     // ==========================================
-    // MÉTODOS DE RENDERIZAÇÃO DO GUI
+    // MÉTODOS DE RENDERIZAÇÃO DOS GUIS
     // ==========================================
+    private void abrirMenuConfiguracao(Player player, ItemStack picareta) {
+        Inventory gui = Bukkit.createInventory(new ConfigHolder(), 27, Component.text("§8Configurações da Picareta"));
+        ItemMeta meta = picareta.getItemMeta();
+
+        int estadoLixeira = meta.getPersistentDataContainer().getOrDefault(keyLixeira, PersistentDataType.INTEGER, 0);
+
+        ItemStack toggleLixeira = new ItemStack(estadoLixeira == 1 ? Material.LIME_DYE : Material.GRAY_DYE);
+        ItemMeta toggleMeta = toggleLixeira.getItemMeta();
+        toggleMeta.setDisplayName(estadoLixeira == 1 ? "§aModo Lixeira: ATIVADO" : "§cModo Lixeira: DESATIVADO");
+        toggleMeta.setLore(List.of("§7Clique para alternar o status."));
+        toggleLixeira.setItemMeta(toggleMeta);
+        gui.setItem(11, toggleLixeira);
+
+        ItemStack btnFiltro = new ItemStack(Material.HOPPER);
+        ItemMeta filtroMeta = btnFiltro.getItemMeta();
+        filtroMeta.setDisplayName("§eFiltro da Lixeira");
+        filtroMeta.setLore(List.of("§7Clique para gerenciar os itens", "§7que serão descartados."));
+        btnFiltro.setItemMeta(filtroMeta);
+        gui.setItem(15, btnFiltro);
+
+        player.openInventory(gui);
+    }
+
     private void abrirMenuFiltro(Player player, ItemStack picareta) {
         Inventory gui = Bukkit.createInventory(new FiltroHolder(), 27, Component.text("§8Filtro da Lixeira"));
 
         ItemMeta meta = picareta.getItemMeta();
-        converterPicaretaAntiga(picareta, meta); // Garantia extra
+        converterPicaretaAntiga(picareta, meta);
 
         String filtroStr = meta.getPersistentDataContainer().getOrDefault(keyFiltro, PersistentDataType.STRING, "");
 
@@ -225,51 +273,53 @@ public class EvPick implements Listener {
     }
 
     // ==========================================
-    // EVENTO 3: QUEBRAR BLOCO (LÓGICA DA LIXEIRA)
+    // EVENTO 3: QUEBRAR BLOCO E GERAR RECURSOS
     // ==========================================
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
         ItemStack itemHand = player.getInventory().getItemInMainHand();
+        Block block = event.getBlock();
 
         if (itemHand.getType() == Material.AIR || !itemHand.hasItemMeta()) return;
 
         ItemMeta meta = itemHand.getItemMeta();
-        converterPicaretaAntiga(itemHand, meta);
-
         if (meta == null) return;
 
         converterPicaretaAntiga(itemHand, meta);
 
-        // Verifica se é uma Picareta do Sistema (tem a tag de blocos)
         if (meta.getPersistentDataContainer().has(keyBlocos, PersistentDataType.INTEGER)) {
 
-            // 1. SORTEIO DE DROPS ESPECIAIS (Independente de ser pedra ou não)
+            // [NOVIDADE]: Verificações de segurança
+            boolean noTerreno = SistemaTerrenos.getInstance() != null && SistemaTerrenos.getInstance().isBlocoProtegido(block.getLocation());
+            boolean blocoColocadoManual = block.hasMetadata(META_COLOCADO);
+
+            // Só pode evoluir ou dar prêmios se estiver NA NATUREZA VERDADEIRA!
+            boolean podeEvoluirEDropar = !noTerreno && !blocoColocadoManual;
+
             List<ItemStack> dropsParaEntregar = new ArrayList<>();
-            List<ItemStack> sorteados = gerarDropsEspeciais();
-            if (sorteados != null) dropsParaEntregar.addAll(sorteados);
 
-            // 2. LÓGICA DE COLETA AUTOMÁTICA E LIXEIRA
+            // 1. SORTEIO DE DROPS ESPECIAIS (Somente permitido fora de terrenos)
+            if (podeEvoluirEDropar) {
+                List<ItemStack> sorteados = gerarDropsEspeciais();
+                if (sorteados != null) dropsParaEntregar.addAll(sorteados);
+            }
+
+            // 2. SISTEMA DE COLETA E LIXEIRA (Continua funcionando dentro das casas)
             if (plugin.getConfig().getBoolean("sistema_coleta_ativa", true)) {
-                // Cancela os drops no chão para coletar no inventário
                 event.setDropItems(false);
-
-                // Adiciona os drops normais do bloco quebrado
                 dropsParaEntregar.addAll(event.getBlock().getDrops(itemHand));
 
                 int estadoLixeira = meta.getPersistentDataContainer().getOrDefault(keyLixeira, PersistentDataType.INTEGER, 0);
                 String filtroStr = meta.getPersistentDataContainer().getOrDefault(keyFiltro, PersistentDataType.STRING, "");
 
-                // Aplica o Filtro da Lixeira
                 if (estadoLixeira == 1 && !filtroStr.isEmpty()) {
                     List<String> listaFiltro = Arrays.asList(filtroStr.split(","));
                     dropsParaEntregar.removeIf(item -> listaFiltro.contains(item.getType().name()));
                 }
 
-                // Entrega os itens ao jogador
                 HashMap<Integer, ItemStack> sobrou = player.getInventory().addItem(dropsParaEntregar.toArray(new ItemStack[0]));
 
-                // Se o inventário encher, dropa o que sobrou no chão
                 if (!sobrou.isEmpty()) {
                     Location loc = event.getBlock().getLocation();
                     for (ItemStack item : sobrou.values()) {
@@ -277,7 +327,6 @@ public class EvPick implements Listener {
                     }
                 }
             } else {
-                // Se a coleta ativa estiver DESLIGADA, dropa os itens sorteados no chão
                 if (!dropsParaEntregar.isEmpty()) {
                     Location loc = event.getBlock().getLocation();
                     for (ItemStack item : dropsParaEntregar) {
@@ -286,38 +335,40 @@ public class EvPick implements Listener {
                 }
             }
 
-
             Material tipoBloco = event.getBlock().getType();
+            block.removeMetadata(META_COLOCADO, plugin); // Limpa da memória!
+
             if (!ehPedra(tipoBloco)) return;
 
-            int blocosTotais = meta.getPersistentDataContainer().getOrDefault(keyBlocos, PersistentDataType.INTEGER, 0);
-            blocosTotais++;
-            meta.getPersistentDataContainer().set(keyBlocos, PersistentDataType.INTEGER, blocosTotais);
+            // 3. LEVEL E EVOLUÇÃO (Somente permitido fora de terrenos)
+            if (podeEvoluirEDropar) {
+                int blocosTotais = meta.getPersistentDataContainer().getOrDefault(keyBlocos, PersistentDataType.INTEGER, 0);
+                blocosTotais++;
+                meta.getPersistentDataContainer().set(keyBlocos, PersistentDataType.INTEGER, blocosTotais);
 
-            int metaAtual = plugin.getConfig().getInt("blocos_iniciais", 50);
-            int tier = 0;
-            int progressoNoTier = blocosTotais;
+                int metaAtual = plugin.getConfig().getInt("blocos_iniciais", 50);
+                int tier = 0;
+                int progressoNoTier = blocosTotais;
 
-            while (progressoNoTier >= metaAtual && tier < 5) {
-                progressoNoTier -= metaAtual;
-                tier++;
-                metaAtual *= 2;
+                while (progressoNoTier >= metaAtual && tier < 5) {
+                    progressoNoTier -= metaAtual;
+                    tier++;
+                    metaAtual *= 2;
+                }
+
+                List<String> lore = meta.getLore();
+                if (lore != null && lore.size() >= 5) {
+                    lore.set(4, gerarBarraProgresso(tier, progressoNoTier, metaAtual));
+                    meta.setLore(lore);
+                }
+
+                itemHand.setItemMeta(meta);
+                tentarEncantar(itemHand, player);
+                evoluirPicareta(itemHand, tier, player);
             }
-
-            List<String> lore = meta.getLore();
-            if (lore != null && lore.size() >= 5) {
-                lore.set(4, gerarBarraProgresso(tier, progressoNoTier, metaAtual));
-                meta.setLore(lore);
-            }
-
-            itemHand.setItemMeta(meta);
-            tentarEncantar(itemHand, player);
-            evoluirPicareta(itemHand, tier, player);
         }
     }
 
-
-    // --- MÉTODOS AUXILIARES INALTERADOS ---
     private boolean ehPedra(Material mat) {
         return mat == Material.STONE || mat == Material.COBBLESTONE || mat == Material.DEEPSLATE ||
                 mat == Material.COBBLED_DEEPSLATE || mat == Material.ANDESITE ||

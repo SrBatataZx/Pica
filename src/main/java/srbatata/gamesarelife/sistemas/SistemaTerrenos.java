@@ -1,11 +1,6 @@
-package srbatata.gamesarelife.sistemas;
+package srbatata.gamesarelife.sistemas; // Mude para seu pacote exato
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -14,32 +9,30 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.Action;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.block.BlockIgniteEvent;
-import org.bukkit.event.block.BlockBurnEvent;
-import org.bukkit.event.block.BlockSpreadEvent;
+import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent; // [MELHORIA] Import novo
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import srbatata.gamesarelife.core.Principal;
 
-import java.util.*;
 import java.sql.*;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter {
 
+    // [NOVO] Instância Singleton para acesso global
+    private static SistemaTerrenos instance;
+
     private final Principal plugin;
     public final NamespacedKey keyVara;
-    private final String urlBanco; // Rota para o arquivo SQLite
+    private final String urlBanco;
 
-    // [MELHORIA] Constante estática para o TabCompleter não ser recriado na memória a cada tecla digitada
     private static final List<String> SUBCOMANDOS = List.of("proteger", "desproteger", "adicionar", "remover", "membros", "listar", "renomear", "ajuda");
 
     private final Map<UUID, Location> pos1 = new HashMap<>();
@@ -49,23 +42,44 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
     private final List<Terreno> terrenosProtegidos = new ArrayList<>();
     private final Map<UUID, Terreno> jogadorNoTerreno = new HashMap<>();
 
+    private final Map<UUID, String> nomesCache = new ConcurrentHashMap<>();
+    private org.bukkit.scheduler.BukkitTask taskBordas;
+
     private final int LIMITE_BASE = 400;
 
     public SistemaTerrenos(Principal plugin) {
+        // [NOVO] Define a instância ao inicializar
+        instance = this;
+
         this.plugin = plugin;
         this.keyVara = new NamespacedKey(plugin, "vara_protecao");
 
-        // [MELHORIA] Garante que a pasta do plugin exista ANTES do SQLite tentar criar o arquivo
         if (!plugin.getDataFolder().exists()) {
             plugin.getDataFolder().mkdirs();
         }
 
-        // [MELHORIA] Usa o getAbsolutePath() para garantir o caminho perfeito em qualquer Sistema Operacional (Windows/Linux)
         this.urlBanco = "jdbc:sqlite:" + plugin.getDataFolder().getAbsolutePath() + "/terrenos.db";
 
-        criarTabela(); // Prepara o SQLite
-        carregarTerrenos(); // Carrega e faz a migração se necessário
+        criarTabela();
+        carregarTerrenos();
         iniciarVisualizadorDeBordas();
+    }
+
+    // [NOVO] Método para pegar a instância do sistema de terrenos
+    public static SistemaTerrenos getInstance() {
+        return instance;
+    }
+
+    public void desativar() {
+        if (taskBordas != null && !taskBordas.isCancelled()) {
+            taskBordas.cancel();
+        }
+        bordasAtivas.clear();
+        pos1.clear();
+        pos2.clear();
+        cacheBlocosUsados.clear();
+        nomesCache.clear();
+        jogadorNoTerreno.clear();
     }
 
     private void criarTabela() {
@@ -91,9 +105,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         }
     }
 
-    // ==========================================
-    // PREVENÇÃO DE MEMORY LEAK [MELHORIA]
-    // ==========================================
     @EventHandler
     public void aoSair(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
@@ -101,27 +112,27 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         pos2.remove(uuid);
         jogadorNoTerreno.remove(uuid);
         cacheBlocosUsados.remove(uuid);
-        bordasAtivas.remove(uuid); // Limpa as bordas fantasmas da memória RAM
+
+        if (bordasAtivas.containsKey(uuid)) {
+            for (Location loc : bordasAtivas.get(uuid).keySet()) {
+                event.getPlayer().sendBlockChange(loc, loc.getBlock().getBlockData());
+            }
+            bordasAtivas.remove(uuid);
+        }
     }
 
-    // ==========================================
-    // 1. ANTI-EXPLOSÃO EM TERRENOS
-    // ==========================================
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void aoExplodir(EntityExplodeEvent event) {
         event.blockList().removeIf(block -> isBlocoProtegido(block.getLocation()));
     }
 
-    private boolean isBlocoProtegido(Location loc) {
-        return getTerrenoLocal(loc) != null; // [MELHORIA] Reutiliza o método existente para evitar repetição de código
+    // [MODIFICADO] Esse método agora é PUBLIC para o EvPick poder consultar!
+    public boolean isBlocoProtegido(Location loc) {
+        return getTerrenoLocal(loc) != null;
     }
 
-    // ==========================================
-    // 2. SISTEMA DE BORDAS PERMANENTES E INTELIGENTES
-    // ==========================================
     private void iniciarVisualizadorDeBordas() {
-        // Agora roda a cada 10 ticks (0.5 segundos) para ser mais responsivo quando o jogador anda
-        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+        this.taskBordas = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 ItemStack item = player.getInventory().getItemInMainHand();
                 boolean segurandoVara = item.getType() == Material.BLAZE_ROD && item.hasItemMeta() &&
@@ -133,25 +144,22 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
                 if (segurandoVara) {
                     Map<Location, Material> bordasNovas = calcularBordasVisiveis(player);
 
-                    // 1. Apaga os blocos de vidro de locais que o jogador se distanciou ou mudou de altura (Y)
                     for (Map.Entry<Location, Material> entry : bordasAntigas.entrySet()) {
                         Location loc = entry.getKey();
                         if (!bordasNovas.containsKey(loc) || bordasNovas.get(loc) != entry.getValue()) {
-                            player.sendBlockChange(loc, loc.getBlock().getBlockData()); // Retorna ao bloco real do mapa
+                            player.sendBlockChange(loc, loc.getBlock().getBlockData());
                         }
                     }
 
-                    // 2. Desenha os novos blocos de vidro
                     for (Map.Entry<Location, Material> entry : bordasNovas.entrySet()) {
                         Location loc = entry.getKey();
                         if (!bordasAntigas.containsKey(loc) || bordasAntigas.get(loc) != entry.getValue()) {
-                            player.sendBlockChange(loc, Bukkit.createBlockData(entry.getValue())); // Pinta o vidro
+                            player.sendBlockChange(loc, Bukkit.createBlockData(entry.getValue()));
                         }
                     }
 
                     bordasAtivas.put(uuid, bordasNovas);
 
-                    // Action Bar
                     int usados = cacheBlocosUsados.computeIfAbsent(uuid, this::getBlocosUsados);
                     int total = getLimiteTotal(uuid);
                     String cor = (usados >= total) ? "§c" : (usados >= total * 0.8) ? "§e" : "§a";
@@ -159,11 +167,10 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
                     player.sendActionBar("§6§lTERRENOS: " + cor + usados + " §8/ " + total + " §8[" + barra + "§8]");
 
                 } else if (!bordasAntigas.isEmpty()) {
-                    // O jogador guardou a vara no inventário! Vamos apagar todas as marcações.
                     for (Location loc : bordasAntigas.keySet()) {
                         player.sendBlockChange(loc, loc.getBlock().getBlockData());
                     }
-                    bordasAtivas.remove(uuid); // Remove do rastreador
+                    bordasAtivas.remove(uuid);
                 }
             }
         }, 0L, 10L);
@@ -174,40 +181,44 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         String mundo = player.getWorld().getName();
         int pX = player.getLocation().getBlockX();
         int pZ = player.getLocation().getBlockZ();
-        int pY = player.getLocation().getBlockY() - 1; // Pinta na altura do pé do jogador
+        int pY = player.getLocation().getBlockY() - 1;
         UUID uuid = player.getUniqueId();
 
         for (Terreno t : terrenosProtegidos) {
             if (!t.mundo.equals(mundo)) continue;
 
-            // Otimização de Performance: ignora terrenos que estão a mais de 60 blocos de distância do jogador
-            if (pX < t.minX - 60 || pX > t.maxX + 60 || pZ < t.minZ - 60 || pZ > t.maxZ + 60) {
+            if (pX < t.minX - 30 || pX > t.maxX + 30 || pZ < t.minZ - 30 || pZ > t.maxZ + 30) {
                 continue;
             }
 
-            // Verde se for dono ou amigo, Vermelho se for de um desconhecido
             Material cor = (t.dono.equals(uuid) || t.amigos.contains(uuid))
                     ? Material.LIME_STAINED_GLASS
                     : Material.RED_STAINED_GLASS;
 
-            // Preenche o mapa com a borda
             for (int x = t.minX; x <= t.maxX; x++) {
                 bordas.put(new Location(player.getWorld(), x, pY, t.minZ), cor);
                 bordas.put(new Location(player.getWorld(), x, pY, t.maxZ), cor);
             }
-            for (int z = t.minZ + 1; z < t.maxZ; z++) { // +1 e < para não pintar os cantos duas vezes
+            for (int z = t.minZ + 1; z < t.maxZ; z++) {
                 bordas.put(new Location(player.getWorld(), t.minX, pY, z), cor);
                 bordas.put(new Location(player.getWorld(), t.maxX, pY, z), cor);
             }
         }
         return bordas;
     }
-    // ==========================================
-    // 3. MOSTRAR DONO AO ENTRAR
-    // ==========================================
+
+    private String getNomeDonoOtimizado(UUID uuid) {
+        return nomesCache.computeIfAbsent(uuid, k -> {
+            Player p = Bukkit.getPlayer(uuid);
+            if (p != null) return p.getName();
+
+            OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+            return op.getName() != null ? op.getName() : "Desconhecido";
+        });
+    }
+
     @EventHandler
     public void aoMover(PlayerMoveEvent event) {
-        // Ignora movimentos de câmera (mouse), verifica apenas se andou de um bloco para outro
         if (event.getFrom().getBlockX() == event.getTo().getBlockX() &&
                 event.getFrom().getBlockZ() == event.getTo().getBlockZ()) return;
 
@@ -215,25 +226,19 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         Terreno terrenoOndeEsta = getTerrenoLocal(event.getTo());
         Terreno terrenoAnterior = jogadorNoTerreno.get(player.getUniqueId());
 
-        // Entrou em um terreno novo
         if (terrenoOndeEsta != null && terrenoOndeEsta != terrenoAnterior) {
-            OfflinePlayer dono = Bukkit.getOfflinePlayer(terrenoOndeEsta.dono);
-            player.sendActionBar("§6§l[Terrenos] §fVocê entrou no terreno de: §e" + dono.getName());
+            String nomeDono = getNomeDonoOtimizado(terrenoOndeEsta.dono);
+            player.sendActionBar("§6§l[Terrenos] §fVocê entrou no terreno de: §e" + nomeDono);
             player.playSound(player.getLocation(), Sound.UI_TOAST_IN, 0.5f, 1.5f);
             jogadorNoTerreno.put(player.getUniqueId(), terrenoOndeEsta);
         }
-        // Saiu do terreno
         else if (terrenoOndeEsta == null && terrenoAnterior != null) {
-            // CORREÇÃO: Usar o 'terrenoAnterior' em vez de 'terrenoOndeEsta'
-            OfflinePlayer dono = Bukkit.getOfflinePlayer(terrenoAnterior.dono);
-            player.sendActionBar("§6§l[Terrenos] §fVocê saiu do terreno de: §e" + dono.getName());
+            String nomeDono = getNomeDonoOtimizado(terrenoAnterior.dono);
+            player.sendActionBar("§6§l[Terrenos] §fVocê saiu do terreno de: §e" + nomeDono);
             jogadorNoTerreno.remove(player.getUniqueId());
         }
     }
 
-    // ==========================================
-    // SISTEMA DE SALVAMENTO E CARREGAMENTO
-    // ==========================================
     private void salvarTerrenoAsync(Terreno t) {
         CompletableFuture.runAsync(() -> {
             String sql = """
@@ -246,7 +251,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             try (Connection conn = DriverManager.getConnection(urlBanco);
                  PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-                // Se for terreno novo (-1), passamos NULL para o SQLite gerar um ID automático
                 if (t.id == -1) { ps.setNull(1, Types.INTEGER); } else { ps.setInt(1, t.id); }
 
                 ps.setString(2, t.dono.toString());
@@ -263,7 +267,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
 
                 ps.executeUpdate();
 
-                // Se o terreno era novo, pega o ID gerado pelo banco e salva no objeto da RAM
                 if (t.id == -1) {
                     try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                         if (generatedKeys.next()) {
@@ -276,8 +279,9 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             }
         });
     }
+
     private void deletarTerrenoAsync(Terreno t) {
-        if (t.id == -1) return; // Não está no banco
+        if (t.id == -1) return;
 
         CompletableFuture.runAsync(() -> {
             String sql = "DELETE FROM terrenos WHERE id = ?";
@@ -294,7 +298,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
     private void carregarTerrenos() {
         terrenosProtegidos.clear();
 
-        // 1. CARREGA DO SQLITE
         String sqlSelect = "SELECT * FROM terrenos";
         try (Connection conn = DriverManager.getConnection(urlBanco);
              Statement stmt = conn.createStatement();
@@ -324,7 +327,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             plugin.getLogger().severe("[Terrenos] Erro ao carregar terrenos do SQLite: " + e.getMessage());
         }
 
-        // 2. MIGRAÇÃO DO YAML PARA O SQLITE (Acontece só 1 vez)
         if (plugin.getSalvos().contains("terrenos_salvos")) {
             plugin.getLogger().info("[Terrenos] Iniciando migração do YAML para SQLite...");
 
@@ -353,32 +355,31 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
 
                             Terreno t = new Terreno(-1, dono, mundo, minX, maxX, minZ, maxZ, amigos, nome);
                             terrenosProtegidos.add(t);
-                            salvarTerrenoAsync(t); // Salva no SQLite
+                            salvarTerrenoAsync(t);
                         } catch (Exception ignored) {}
                     }
                 }
             }
 
-            // Apaga os terrenos do YAML (mas mantém os limites_terreno)
             plugin.getSalvos().set("terrenos_salvos", null);
             plugin.saveSalvos();
             plugin.getLogger().info("[Terrenos] Migração concluída com sucesso! YAML limpo.");
         }
     }
+
     public boolean isDono(Player player, Location loc) {
         Terreno t = getTerrenoLocal(loc);
         return t != null && t.dono.equals(player.getUniqueId());
     }
 
     private static class Terreno {
-        int id = -1; // [NOVO] -1 significa que ainda não foi salvo no banco
+        int id = -1;
         UUID dono;
         String mundo;
         int minX, maxX, minZ, maxZ;
         Set<UUID> amigos;
         String nome;
 
-        // Atualize os construtores:
         Terreno(UUID dono, Location p1, Location p2, String nome) {
             this.dono = dono; this.mundo = p1.getWorld().getName();
             this.minX = Math.min(p1.getBlockX(), p2.getBlockX()); this.maxX = Math.max(p1.getBlockX(), p2.getBlockX());
@@ -387,7 +388,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             this.nome = nome;
         }
 
-        // Construtor completo usado pelo Banco de Dados
         Terreno(int id, UUID dono, String mundo, int minX, int maxX, int minZ, int maxZ, Set<UUID> amigos, String nome) {
             this.id = id; this.dono = dono; this.mundo = mundo; this.minX = minX; this.maxX = maxX;
             this.minZ = minZ; this.maxZ = maxZ; this.amigos = amigos; this.nome = nome;
@@ -404,11 +404,7 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         }
     }
 
-    // ==========================================
-    // SISTEMA DE LIMITES
-    // ==========================================
     private int getBlocosUsados(UUID uuid) {
-        // [MELHORIA] Uso de Streams do Java para calcular a soma de forma limpa e rápida
         return terrenosProtegidos.stream()
                 .filter(t -> t.dono.equals(uuid))
                 .mapToInt(Terreno::getArea)
@@ -427,9 +423,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         plugin.saveSalvos();
     }
 
-    // ==========================================
-    // SELEÇÃO COM A VARA
-    // ==========================================
     @EventHandler
     public void onSelect(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
@@ -459,9 +452,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         }
     }
 
-    // ==========================================
-    // SISTEMA DE COMANDOS
-    // ==========================================
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
@@ -479,13 +469,13 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             String subComando = args[0].toLowerCase();
 
             switch (subComando) {
-                case "proteger" -> comandoProteger(player, uuid, args); // Note o 'args'
+                case "proteger" -> comandoProteger(player, uuid, args);
                 case "desproteger" -> comandoDesproteger(player, uuid);
                 case "adicionar" -> comandoAdicionar(player, uuid, args);
                 case "remover" -> comandoRemover(player, uuid, args);
                 case "membros" -> comandoMembros(player, uuid);
                 case "listar" -> comandoListar(player, uuid, args);
-                case "renomear" -> comandoRenomear(player, uuid, args); // [NOVO]
+                case "renomear" -> comandoRenomear(player, uuid, args);
                 case "ajuda" -> enviarAjuda(player);
                 default -> player.sendMessage("§cComando desconhecido. Digite /terreno ajuda.");
             }
@@ -520,10 +510,8 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             return;
         }
 
-        // [NOVO] Extrai o nome do comando se fornecido, senão usa padrão
         String nomeTerreno = "Meu Terreno";
         if (args.length > 1) {
-            // [MELHORIA] .replace() impede que o jogador quebre a formatação do save
             nomeTerreno = String.join(" ", Arrays.copyOfRange(args, 1, args.length)).replace(";", "");
         }
 
@@ -549,7 +537,7 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         }
 
         terrenosProtegidos.add(novoTerreno);
-        salvarTerrenoAsync(novoTerreno); // <--- Chama o novo método
+        salvarTerrenoAsync(novoTerreno);
         pos1.remove(uuid);
         pos2.remove(uuid);
         cacheBlocosUsados.remove(uuid);
@@ -558,7 +546,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
     }
 
-    // [NOVO] Comando para alterar o nome de um terreno já criado
     private void comandoRenomear(Player player, UUID uuid, String[] args) {
         if (args.length < 2) {
             player.sendMessage("§cUso correto: /terreno renomear <novo nome>");
@@ -592,7 +579,7 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         } else {
             player.sendMessage("§cVocê não está dentro de nenhum terreno protegido por você.");
         }
-        cacheBlocosUsados.remove(uuid); // Limpa o cache para forçar a atualização da barra
+        cacheBlocosUsados.remove(uuid);
     }
 
     private void comandoAdicionar(Player player, UUID uuid, String[] args) {
@@ -651,8 +638,8 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
 
         player.sendMessage("§6§lMembros deste terreno:");
         for (UUID amigoId : terrenoAtual.amigos) {
-            String nome = Bukkit.getOfflinePlayer(amigoId).getName();
-            player.sendMessage("§8- §a" + (nome != null ? nome : "Desconhecido"));
+            String nome = getNomeDonoOtimizado(amigoId);
+            player.sendMessage("§8- §a" + nome);
         }
     }
 
@@ -671,7 +658,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             for (int i = 0; i < meusTerrenos.size(); i++) {
                 Terreno t = meusTerrenos.get(i);
 
-                // Usamos o nome do terreno na mensagem
                 net.md_5.bungee.api.chat.TextComponent mensagem = new net.md_5.bungee.api.chat.TextComponent(
                         "§8- §a" + t.nome + " §f(" + t.mundo + ") "
                 );
@@ -738,9 +724,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         return true;
     }
 
-    // ==========================================
-    // PROTEÇÃO DOS BLOCOS (Anti-Griefing)
-    // ==========================================
     private boolean podeMexer(Player player, Location loc) {
         if (player.isOp()) return true;
         Terreno t = getTerrenoLocal(loc);
@@ -770,7 +753,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
     public void onInteractProtect(PlayerInteractEvent event) {
         if (event.getClickedBlock() == null) return;
 
-        // Bloqueia clicar em baús, fornalhas, portas, etc.
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getClickedBlock().getType().isInteractable()) {
             if (!podeMexer(event.getPlayer(), event.getClickedBlock().getLocation())) {
                 event.setCancelled(true);
@@ -778,7 +760,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             }
         }
 
-        // Bloqueia pisotear plantações (Action.PHYSICAL)
         if (event.getAction() == Action.PHYSICAL && event.getClickedBlock().getType() == Material.FARMLAND) {
             if (!podeMexer(event.getPlayer(), event.getClickedBlock().getLocation())) {
                 event.setCancelled(true);
@@ -786,9 +767,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         }
     }
 
-    // ==========================================
-    // 4. PROTEÇÃO CONTRA FOGO
-    // ==========================================
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void aoAcenderFogo(BlockIgniteEvent event) {
         if (event.getPlayer() != null) {
@@ -818,6 +796,7 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             }
         }
     }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void aoUsarBalde(org.bukkit.event.player.PlayerBucketEmptyEvent event) {
         if (!podeMexer(event.getPlayer(), event.getBlockClicked().getLocation())) {
@@ -833,6 +812,7 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             event.getPlayer().sendMessage("§cVocê não pode pegar líquidos daqui!");
         }
     }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void aoPistaoEmpurrar(org.bukkit.event.block.BlockPistonExtendEvent event) {
         Terreno terrenoPistao = getTerrenoLocal(event.getBlock().getLocation());
@@ -840,7 +820,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             Location destino = bloco.getLocation().add(event.getDirection().getDirection());
             Terreno terrenoDestino = getTerrenoLocal(destino);
 
-            // Se o destino tem proteção e o pistão está de fora (ou em terreno diferente)
             if (terrenoDestino != null && terrenoDestino != terrenoPistao) {
                 event.setCancelled(true);
                 return;
@@ -859,12 +838,10 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             }
         }
     }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void aoAtacarEntidade(org.bukkit.event.entity.EntityDamageByEntityEvent event) {
-        // Se o dano foi causado por um jogador
         if (event.getDamager() instanceof Player atacante) {
-
-            // Se a entidade atacada for um animal, NPC, moldura, etc (exclui monstros)
             if (!(event.getEntity() instanceof org.bukkit.entity.Monster)) {
                 if (!podeMexer(atacante, event.getEntity().getLocation())) {
                     event.setCancelled(true);
@@ -874,44 +851,36 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         }
     }
 
-    // Protege contra usar itens nas entidades (ex: pintar ovelha, girar item na moldura)
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void aoInteragirEntidade(org.bukkit.event.player.PlayerInteractEntityEvent event) {
         if (!podeMexer(event.getPlayer(), event.getRightClicked().getLocation())) {
             event.setCancelled(true);
         }
     }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void aoFluidoEscorrer(org.bukkit.event.block.BlockFromToEvent event) {
         Terreno origem = getTerrenoLocal(event.getBlock().getLocation());
         Terreno destino = getTerrenoLocal(event.getToBlock().getLocation());
 
-        // Se a água/lava está indo de um lugar sem dono para um lugar com dono, bloqueia
         if (origem != destino && destino != null) {
             event.setCancelled(true);
         }
     }
-    // ==========================================
-    // UTILITÁRIO: BARRA DE PROGRESSO
-    // ==========================================
+
     private String gerarBarraProgresso(int atual, int total, int tamanho) {
-        if (total == 0) return "§c" + "■".repeat(tamanho); // Evita divisão por zero
+        if (total == 0) return "§c" + "■".repeat(tamanho);
 
         int preenchido = (int) Math.round((double) atual / total * tamanho);
-        preenchido = Math.min(preenchido, tamanho); // Garante que não ultrapasse o visual
+        preenchido = Math.min(preenchido, tamanho);
         int vazio = tamanho - preenchido;
 
-        // O repeat() é uma funcionalidade nativa e rápida do Java 11+
         return "§a" + "■".repeat(preenchido) + "§7" + "■".repeat(vazio);
     }
 
-    // ==========================================
-    // SISTEMA DE AUTO-COMPLETAR (TAB)
-    // ==========================================
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
-            // [MELHORIA] Usa a constante pré-criada em vez de criar uma lista nova a cada letra digitada
             return SUBCOMANDOS.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                     .toList();

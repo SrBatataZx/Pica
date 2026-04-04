@@ -15,11 +15,10 @@ import srbatata.gamesarelife.itens.eventos.EvAutoColeta;
 import srbatata.gamesarelife.itens.eventos.EvAxe;
 import srbatata.gamesarelife.itens.eventos.EvPa;
 import srbatata.gamesarelife.itens.eventos.EvPick;
-import srbatata.gamesarelife.menus.ArmazemAprendiz;
-import srbatata.gamesarelife.menus.MenuLoja;
-import srbatata.gamesarelife.menus.MenuPrincipal;
-import srbatata.gamesarelife.menus.SistemaKits;
+import srbatata.gamesarelife.menus.*;
 import srbatata.gamesarelife.sistemas.*;
+import srbatata.gamesarelife.sistemas.comandos.*;
+import srbatata.gamesarelife.util.ComandoItemNome;
 
 public class PluginRegistry {
 
@@ -41,7 +40,10 @@ public class PluginRegistry {
         MenuLoja loja = new MenuLoja(plugin, economia, terrenos);
         SistemaKits kits = new SistemaKits(plugin);
         ArmazemAprendiz armazemAprendiz = new ArmazemAprendiz(plugin);
-        MenuPrincipal menuPrincipal = new MenuPrincipal(plugin, missoes, loja, kits, armazemAprendiz);
+
+        MenuPerfil menuPerfil = new MenuPerfil(plugin, missoes, armazemAprendiz, economia.dados());
+        MenuPrincipal menuPrincipal = new MenuPrincipal(plugin, menuPerfil, loja, kits);
+
         new ArmorManager(plugin, terrenos);
         // --- 2. REGISTRO DE COMANDOS ---
         regCmd("picareta", new EvAutoColeta(plugin));
@@ -53,11 +55,7 @@ public class PluginRegistry {
         regCmd("menu", menuPrincipal);
 
         // Terrenos
-        regCmd("proteger", terrenos);
-        regCmd("desproteger", terrenos);
-        regCmd("addamigo", terrenos);
-        regCmd("removeamigo", terrenos);
-        regCmd("claimlist", terrenos);
+        regCmd("terreno", terrenos);
 
         // Teleporte e Utilidades
         SistemaBack back = new SistemaBack(plugin);
@@ -84,6 +82,8 @@ public class PluginRegistry {
         regEvt(pvp);
 
         regCmd("discord", new ComandoDiscord());
+        regCmd("itemnome", new ComandoItemNome());
+        regCmd("setlojaspawn", new ComandoSetLoja(plugin));
 
         // --- 3. REGISTRO DE EVENTOS ---
         regEvt(new EvPick(plugin));
@@ -95,17 +95,22 @@ public class PluginRegistry {
         regEvt(loja);
         regEvt(kits);
         regEvt(menuPrincipal);
+        regEvt(menuPerfil);
         regEvt(armazemAprendiz);
         regEvt(new PedraTeleporte(plugin, gereWaystone));
         regEvt(new OlhoDoTeleporte(plugin, gereWaystone));
         regEvt(new SistemaPesca(plugin, economia));
         regEvt(new SistemaMochila(plugin));
+        regEvt(new SistemaLojaPlacas(plugin, economia, terrenos));
     }
 
     // Atalhos para economizar código
     private void regCmd(String nome, CommandExecutor executor) {
         if (plugin.getCommand(nome) != null) {
             plugin.getCommand(nome).setExecutor(executor);
+            if (executor instanceof org.bukkit.command.TabCompleter completer) {
+                plugin.getCommand(nome).setTabCompleter(completer);
+            }
         } else {
             plugin.getLogger().warning("Comando /" + nome + " nao encontrado no plugin.yml!");
         }

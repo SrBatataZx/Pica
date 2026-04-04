@@ -22,27 +22,25 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
-import srbatata.gamesarelife.SistemaMissoes;
 import srbatata.gamesarelife.core.Principal;
 
-import java.util.Arrays;
+import java.util.List;
 
 public class MenuPrincipal implements Listener, CommandExecutor {
 
     private final Principal plugin;
-    private final SistemaMissoes sistemaMissoes;
+    private final MenuPerfil menuPerfil; // Nova injeção de dependência
     private final MenuLoja sistemaLoja;
     private final SistemaKits sistemaKits;
     private final NamespacedKey keyItemMenu;
-    private final ArmazemAprendiz armazemAprendiz;
 
-    public MenuPrincipal(Principal plugin, SistemaMissoes sistemaMissoes, MenuLoja sistemaLoja, SistemaKits sistemaKits, ArmazemAprendiz armazemAprendiz) {
+    public MenuPrincipal(Principal plugin, MenuPerfil menuPerfil, MenuLoja sistemaLoja, SistemaKits sistemaKits) {
         this.plugin = plugin;
-        this.sistemaMissoes = sistemaMissoes;
+        this.menuPerfil = menuPerfil;
         this.sistemaLoja = sistemaLoja;
         this.sistemaKits = sistemaKits;
-        this.armazemAprendiz = armazemAprendiz;
         this.keyItemMenu = new NamespacedKey(plugin, "item_menu_principal");
     }
 
@@ -50,20 +48,18 @@ public class MenuPrincipal implements Listener, CommandExecutor {
         ItemStack item = new ItemStack(Material.NETHER_STAR);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName("§6§lMenu Principal");
-        meta.setLore(Arrays.asList("§7Clique para abrir", "§7os sistemas do servidor."));
+        meta.setLore(List.of("§7Clique para abrir", "§7os sistemas do servidor."));
         meta.getPersistentDataContainer().set(keyItemMenu, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
         return item;
     }
 
-    // Método auxiliar para identificar o item facilmente
     private boolean isItemMenu(ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return false;
         if (!item.hasItemMeta()) return false;
         return item.getItemMeta().getPersistentDataContainer().has(keyItemMenu, PersistentDataType.BYTE);
     }
 
-    // Remove qualquer estrela duplicada que o jogador possa ter "bugado" antes
     private void limparMenusDuplicados(Player player) {
         for (int i = 0; i < player.getInventory().getSize(); i++) {
             if (isItemMenu(player.getInventory().getItem(i))) {
@@ -97,7 +93,6 @@ public class MenuPrincipal implements Listener, CommandExecutor {
 
     @EventHandler
     public void onSwapHand(PlayerSwapHandItemsEvent event) {
-        // Impede que o jogador aperte "F" para colocar o menu na segunda mão
         if (isItemMenu(event.getMainHandItem()) || isItemMenu(event.getOffHandItem())) {
             event.setCancelled(true);
         }
@@ -105,7 +100,6 @@ public class MenuPrincipal implements Listener, CommandExecutor {
 
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
-        // Impede de arrastar itens sobre o menu ou arrastar o próprio menu
         if (isItemMenu(event.getOldCursor()) || isItemMenu(event.getCursor())) {
             event.setCancelled(true);
         }
@@ -113,6 +107,7 @@ public class MenuPrincipal implements Listener, CommandExecutor {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
+        // Pattern Matching: Se não for player, encerra a execução e faz o cast automático
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
         ItemStack current = event.getCurrentItem();
@@ -126,7 +121,6 @@ public class MenuPrincipal implements Listener, CommandExecutor {
         if (isMenuClick || isSlot8 || isTecladoSlot8) {
             event.setCancelled(true);
 
-            // Se ele tentou clicar na estrela dentro do próprio inventário, apenas abre o menu
             if (isItemMenu(current) && event.getClickedInventory() != null && event.getClickedInventory().equals(player.getInventory())) {
                 Bukkit.getScheduler().runTask(plugin, () -> abrirMenuPrincipal(player));
             }
@@ -139,9 +133,9 @@ public class MenuPrincipal implements Listener, CommandExecutor {
 
             if (current == null || current.getType() == Material.AIR) return;
 
-            if (current.getType() == Material.ENCHANTED_BOOK) {
+            if (current.getType() == Material.PLAYER_HEAD) { // ABRIR O SUB-MENU
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
-                Bukkit.getScheduler().runTask(plugin, () -> sistemaMissoes.abrirMenuMissoes(player));
+                Bukkit.getScheduler().runTask(plugin, () -> menuPerfil.abrirMenuPerfil(player));
             }
             else if (current.getType() == Material.EMERALD) {
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
@@ -160,11 +154,6 @@ public class MenuPrincipal implements Listener, CommandExecutor {
                 player.sendMessage("§fJunte-se a nós para novidades, suporte e muito mais!");
                 player.sendMessage("§eClique aqui para entrar: §b§nhttp://discord.gg/euh75ek2nZ");
                 player.sendMessage("");
-            }
-            else if (current.getType() == Material.ENDER_CHEST) {
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
-                // Fecha o menu principal e abre o armazém no próximo tick
-                Bukkit.getScheduler().runTask(plugin, () -> armazemAprendiz.abrirArmazem(player));
             }
         }
     }
@@ -187,38 +176,36 @@ public class MenuPrincipal implements Listener, CommandExecutor {
     private void abrirMenuPrincipal(Player player) {
         Inventory inv = Bukkit.createInventory(null, 27, "§8Menu Principal");
 
-        ItemStack missoes = new ItemStack(Material.ENCHANTED_BOOK);
-        ItemMeta metaMissoes = missoes.getItemMeta();
-        metaMissoes.setDisplayName("§e§lMenu de Missões");
-        metaMissoes.setLore(Arrays.asList("§7Complete tarefas e", "§7ganhe recompensas.", "", "§eClique para acessar!"));
-        missoes.setItemMeta(metaMissoes);
+        // Cria a cabeça do jogador
+        ItemStack perfil = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta metaPerfil = (SkullMeta) perfil.getItemMeta();
+        if (metaPerfil != null) {
+            metaPerfil.setOwningPlayer(player); // Carrega a skin assincronamente (Paper 1.21)
+            metaPerfil.setDisplayName("§b§l" + player.getName());
+            metaPerfil.setLore(List.of("§7Acesse suas Missões", "§7e Armazém aqui.", "", "§eClique para acessar!"));
+            perfil.setItemMeta(metaPerfil);
+        }
 
         ItemStack loja = new ItemStack(Material.EMERALD);
         ItemMeta metaLoja = loja.getItemMeta();
         metaLoja.setDisplayName("§a§lMenu Loja");
-        metaLoja.setLore(Arrays.asList("§7Compre e venda itens.", "", "§eClique para acessar!"));
+        metaLoja.setLore(List.of("§7Compre e venda itens.", "", "§eClique para acessar!"));
         loja.setItemMeta(metaLoja);
 
         ItemStack kits = new ItemStack(Material.MINECART);
         ItemMeta metaKits = kits.getItemMeta();
         metaKits.setDisplayName("§b§lMenu de Kits");
-        metaKits.setLore(Arrays.asList("§7Pegue suas recompensas", "§7e ferramentas iniciais.", "", "§eClique para acessar!"));
+        metaKits.setLore(List.of("§7Pegue suas recompensas", "§7e ferramentas iniciais.", "", "§eClique para acessar!"));
         kits.setItemMeta(metaKits);
 
         ItemStack discord = new ItemStack(Material.NAME_TAG);
         ItemMeta metaDiscord = discord.getItemMeta();
         metaDiscord.setDisplayName("§9§lAcesse nosso Discord");
-        metaDiscord.setLore(Arrays.asList("§7Faça parte da nossa comunidade!", "", "§b§nGames Are Life", "", "§eClique para receber no chat!"));
+        metaDiscord.setLore(List.of("§7Faça parte da nossa comunidade!", "", "§b§nGames Are Life", "", "§eClique para receber no chat!"));
         discord.setItemMeta(metaDiscord);
 
-        ItemStack armazem = new ItemStack(Material.ENDER_CHEST);
-        ItemMeta metaArmazem = armazem.getItemMeta();
-        metaArmazem.setDisplayName("§d§lArmazém do Aprendiz");
-        metaArmazem.setLore(Arrays.asList("§7Guarde suas ferramentas", "§7iniciais aqui com segurança.", "", "§eClique para abrir!"));
-        armazem.setItemMeta(metaArmazem);
-
-        inv.setItem(11, missoes);
-        inv.setItem(4, armazem);
+        // Posicionamento harmônico com 4 itens no GUI de tamanho 27
+        inv.setItem(11, perfil);
         inv.setItem(13, loja);
         inv.setItem(15, kits);
         inv.setItem(22, discord);
@@ -229,8 +216,8 @@ public class MenuPrincipal implements Listener, CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (sender instanceof Player) {
-            abrirMenuPrincipal((Player) sender);
+        if (sender instanceof Player player) {
+            abrirMenuPrincipal(player);
         }
         return true;
     }

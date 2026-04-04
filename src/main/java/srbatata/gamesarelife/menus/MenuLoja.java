@@ -1,9 +1,7 @@
 package srbatata.gamesarelife.menus;
 
 import net.milkbowl.vault.economy.Economy;
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -12,218 +10,253 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.persistence.PersistentDataType;
 import srbatata.gamesarelife.sistemas.SistemaTerrenos;
 import srbatata.gamesarelife.core.Principal;
 
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.List;
+import java.util.UUID;
 
 public class MenuLoja implements Listener {
 
     private final Principal plugin;
     private final Economy econ;
     private final SistemaTerrenos sistemaTerrenos;
+    private final NamespacedKey lojaTargetKey;
 
     public MenuLoja(Principal plugin, Economy econ, SistemaTerrenos sistemaTerrenos) {
         this.plugin = plugin;
         this.econ = econ;
         this.sistemaTerrenos = sistemaTerrenos;
+        this.lojaTargetKey = new NamespacedKey(plugin, "loja_target_uuid");
     }
 
     // ==========================================
-    // 1. MENU PRINCIPAL DA LOJA (CATEGORIAS)
+    // 1. MENU SELETOR INICIAL (MENU PRINCIPAL)
     // ==========================================
     public void abrirMenuLoja(Player player) {
-        Inventory inv = Bukkit.createInventory(null, 36, "§8Menu Loja: Categorias");
+        Inventory inv = Bukkit.createInventory(null, 27, "§8Menu Loja: Categorias");
 
-        ItemStack overworld = new ItemStack(Material.GRASS_BLOCK);
-        ItemMeta metaOver = overworld.getItemMeta();
-        metaOver.setDisplayName("§a§lLoja: Overworld");
-        metaOver.setLore(Arrays.asList("§c🚧 Em manutenção 🚧", "§7Aguarde novidades em breve!"));
-        overworld.setItemMeta(metaOver);
+        // Ícone: Loja do Servidor
+        inv.setItem(11, criarItem(Material.NETHER_STAR, "§b§lLoja do Servidor",
+                List.of("§7Compre itens oficiais e blocos", "§7de dimensões exploradas.", "", "§eClique para acessar!")));
 
-        ItemStack nether = new ItemStack(Material.NETHERRACK);
-        ItemMeta metaNether = nether.getItemMeta();
-        metaNether.setDisplayName("§c§lLoja: Nether");
-        metaNether.setLore(Arrays.asList("§c🚧 Em manutenção 🚧", "§7Aguarde novidades em breve!"));
-        nether.setItemMeta(metaNether);
+        // Ícone: Loja dos Jogadores
+        inv.setItem(15, criarItem(Material.PLAYER_HEAD, "§6§lLojas dos Jogadores",
+                List.of("§7Visite lojas criadas por outros", "§7jogadores da comunidade.", "", "§eClique para acessar!")));
 
-        ItemStack end = new ItemStack(Material.END_STONE);
-        ItemMeta metaEnd = end.getItemMeta();
-        metaEnd.setDisplayName("§d§lLoja: The End");
-        metaEnd.setLore(Arrays.asList("§7Compre blocos, itens e", "§7relíquias raras do Fim.", "", "§eClique para acessar!"));
-        end.setItemMeta(metaEnd);
-
-        double precoLimite = plugin.getConfig().getDouble("loja.terrenos.preco_limite", 10000.0);
-
-        ItemStack limite = new ItemStack(Material.GOLDEN_SHOVEL);
-        ItemMeta metaLimite = limite.getItemMeta();
-        metaLimite.setDisplayName("§e§l+500 Blocos de Proteção");
-        metaLimite.setLore(Arrays.asList("§7Aumente o tamanho máximo", "§7dos seus terrenos protegidos.", "", "§fPreço: §c" + econ.format(precoLimite), "", "§eClique para comprar!"));
-        limite.setItemMeta(metaLimite);
-
-        inv.setItem(11, overworld);
-        inv.setItem(13, nether);
-        inv.setItem(15, end);
-        inv.setItem(31, limite);
-
-        ItemStack voltar = new ItemStack(Material.ARROW);
-        ItemMeta metaVoltar = voltar.getItemMeta();
-        metaVoltar.setDisplayName("§c§lVoltar ao Menu Principal");
-        voltar.setItemMeta(metaVoltar);
-        inv.setItem(35, voltar);
+        // Botão Voltar (Comando /menu)
+        inv.setItem(26, criarItem(Material.ARROW, "§cVoltar", List.of()));
 
         player.openInventory(inv);
     }
 
     // ==========================================
-    // 2. SUB-MENU: LOJA DO FIM (DINÂMICO)
+    // 2. CATEGORIAS DO SERVIDOR (DIMENSÕES)
+    // ==========================================
+    public void abrirMenuServidor(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 36, "§8Loja: Servidor");
+
+        inv.setItem(11, criarItem(Material.GRASS_BLOCK, "§a§lLoja: Overworld", List.of("§c🚧 Em manutenção 🚧")));
+        inv.setItem(13, criarItem(Material.NETHERRACK, "§c§lLoja: Nether", List.of("§c🚧 Em manutenção 🚧")));
+        inv.setItem(15, criarItem(Material.END_STONE, "§d§lLoja: The End", List.of("§7Itens raros do Fim.", "", "§eClique para acessar!")));
+
+        // Compra de limite de blocos (Movido para cá por ser um serviço do servidor)
+        double precoLimite = plugin.getConfig().getDouble("loja.terrenos.preco_limite", 10000.0);
+        inv.setItem(31, criarItem(Material.GOLDEN_SHOVEL, "§e§l+500 Blocos de Proteção",
+                List.of("§7Aumente seus terrenos.", "", "§fPreço: §c" + econ.format(precoLimite), "", "§eClique para comprar!")));
+
+        inv.setItem(35, criarItem(Material.ARROW, "§cVoltar", List.of()));
+
+        player.openInventory(inv);
+    }
+
+    // ==========================================
+    // 3. LISTA DE LOJAS DOS JOGADORES (COMMUNITY)
+    // ==========================================
+    public void abrirLojasJogadores(Player player) {
+        Inventory inv = Bukkit.createInventory(null, 54, "§8Lojas: Jogadores");
+
+        ConfigurationSection secao = plugin.getSalvos().getConfigurationSection("lojas_publicas");
+        if (secao != null) {
+            for (String uuidStr : secao.getKeys(false)) {
+                String nomeDono = secao.getString(uuidStr + ".owner_name", "Desconhecido");
+
+                ItemStack skull = new ItemStack(Material.PLAYER_HEAD);
+                SkullMeta meta = (SkullMeta) skull.getItemMeta();
+                if (meta != null) {
+                    meta.setOwningPlayer(Bukkit.getOfflinePlayer(UUID.fromString(uuidStr)));
+                    meta.setDisplayName("§aLoja de §f" + nomeDono);
+                    meta.setLore(List.of("§7Clique para visitar a loja", "§7deste jogador!", "", "§eClique para teleportar"));
+                    meta.getPersistentDataContainer().set(lojaTargetKey, PersistentDataType.STRING, uuidStr);
+                    skull.setItemMeta(meta);
+                }
+                inv.addItem(skull);
+            }
+        }
+
+        inv.setItem(53, criarItem(Material.ARROW, "§cVoltar", List.of()));
+        player.openInventory(inv);
+    }
+
+    // ==========================================
+    // 4. SUB-MENU DINÂMICO: LOJA DO FIM
     // ==========================================
     public void abrirLojaEnd(Player player) {
-        // Criando inventário de 27 slots
         Inventory inv = Bukkit.createInventory(null, 27, "§8Loja: The End");
-
-        // Puxa a lista de itens da configuração
         ConfigurationSection secaoItens = plugin.getConfig().getConfigurationSection("loja.end.itens");
 
         if (secaoItens != null) {
-            int slot = 0; // Começa do slot 0
-
-            // Passa por todos os itens criados na config
+            int slot = 0;
             for (String key : secaoItens.getKeys(false)) {
-                if (slot >= 26) break; // Protege o slot 26 para o botão de voltar!
-
-                String matString = secaoItens.getString(key + ".material", "STONE");
-                Material material = Material.getMaterial(matString.toUpperCase());
-
+                if (slot >= 26) break;
+                Material material = Material.getMaterial(secaoItens.getString(key + ".material", "STONE").toUpperCase());
                 if (material != null) {
-                    String nome = secaoItens.getString(key + ".nome", "Item");
-                    int quantidade = secaoItens.getInt(key + ".quantidade", 1);
-                    double preco = secaoItens.getDouble(key + ".preco", 100.0);
-
-                    inv.setItem(slot, criarIcone(material, nome, quantidade, preco));
-                    slot++; // Vai para o próximo quadrado (1, 2, 3...)
+                    inv.setItem(slot++, criarIconeVenda(material, secaoItens.getString(key + ".nome", "Item"),
+                            secaoItens.getInt(key + ".quantidade", 1), secaoItens.getDouble(key + ".preco", 100.0)));
                 }
             }
         }
-
-        // Adiciona o botão voltar no último slot fixo (26)
-        ItemStack voltar = new ItemStack(Material.ARROW);
-        ItemMeta metaVoltar = voltar.getItemMeta();
-        metaVoltar.setDisplayName("§c§lVoltar às Categorias");
-        voltar.setItemMeta(metaVoltar);
-        inv.setItem(26, voltar);
-
+        inv.setItem(26, criarItem(Material.ARROW, "§cVoltar", List.of()));
         player.openInventory(inv);
     }
 
-    private ItemStack criarIcone(Material mat, String nome, int quantidade, double preco) {
-        ItemStack item = new ItemStack(mat, quantidade);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(nome.replace("&", "§")); // Transforma & em cores do Minecraft
-        meta.setLore(Arrays.asList(
-                "§fQuantidade: §7" + quantidade + "x",
-                "§fPreço: §c" + econ.format(preco),
-                "",
-                "§eClique para comprar!"
-        ));
-        item.setItemMeta(meta);
-        return item;
-    }
-
     // ==========================================
-    // 3. EVENTOS DE CLIQUES
+    // 5. EVENTO DE CLIQUES UNIFICADO
     // ==========================================
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player)) return;
-        Player player = (Player) event.getWhoClicked();
-        ItemStack itemClicado = event.getCurrentItem();
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        String title = event.getView().getTitle();
+        ItemStack item = event.getCurrentItem();
 
-        if (itemClicado == null || itemClicado.getType() == Material.AIR) return;
+        if (item == null || item.getType() == Material.AIR) return;
 
-        // --- CLIQUES NO MENU DE CATEGORIAS ---
-        if (event.getView().getTitle().equals("§8Menu Loja: Categorias")) {
+        // --- LÓGICA: MENU INICIAL (SELEÇÃO) ---
+        if (title.equals("§8Menu Loja: Categorias")) {
             event.setCancelled(true);
-            int slot = event.getSlot();
-
-            if (slot == 11 || slot == 13) {
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-                player.sendMessage("§cEsta loja ainda está em manutenção!");
+            switch (item.getType()) {
+                case NETHER_STAR -> abrirMenuServidor(player);
+                case PLAYER_HEAD -> abrirLojasJogadores(player);
+                case ARROW -> player.performCommand("menu");
+                default -> { return; }
             }
-            else if (slot == 15) {
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
-                abrirLojaEnd(player);
-            }
-            else if (slot == 31) {
-                double precoLimite = plugin.getConfig().getDouble("loja.terrenos.preco_limite", 10000.0);
-                if (econ.has(player, precoLimite)) {
-                    econ.withdrawPlayer(player, precoLimite);
-                    sistemaTerrenos.adicionarLimite(player, 500);
-                    player.sendMessage("§a🎉 Você comprou §e+500 blocos §ade limite para seus terrenos!");
-                    player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-                    player.closeInventory();
-                } else {
-                    player.sendMessage("§cVocê não tem dinheiro suficiente! Custa " + econ.format(precoLimite));
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-                }
-            }
-            else if (itemClicado.getType() == Material.ARROW) {
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
-                player.performCommand("menu");
-            }
-            return;
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
         }
 
-        // --- CLIQUES NO SUB-MENU DO FIM ---
-        if (event.getView().getTitle().equals("§8Loja: The End")) {
+        // --- LÓGICA: LOJA SERVIDOR (DIMENSÕES) ---
+        else if (title.equals("§8Loja: Servidor")) {
             event.setCancelled(true);
-            int slotClicado = event.getSlot();
+            int slot = event.getSlot();
+            switch (slot) {
+                case 11, 13 -> {
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    player.sendMessage("§cEsta loja ainda está em manutenção!");
+                }
+                case 15 -> abrirLojaEnd(player);
+                case 31 -> processarCompraLimite(player);
+                case 35 -> abrirMenuLoja(player);
+            }
+            if (slot != 31) player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+        }
 
-            if (slotClicado == 26) { // Botão Voltar
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+        // --- LÓGICA: LOJA JOGADORES (COMMUNITY) ---
+        else if (title.equals("§8Lojas: Jogadores")) {
+            event.setCancelled(true);
+            if (item.getType() == Material.ARROW) {
                 abrirMenuLoja(player);
                 return;
             }
 
-            // Descobre em qual item o jogador clicou mapeando a config dinamicamente
-            ConfigurationSection secaoItens = plugin.getConfig().getConfigurationSection("loja.end.itens");
-            if (secaoItens != null) {
-                int slotAtual = 0;
-
-                for (String key : secaoItens.getKeys(false)) {
-                    // Se o slot atual for o mesmo em que o jogador clicou
-                    if (slotAtual == slotClicado) {
-                        String matString = secaoItens.getString(key + ".material", "STONE");
-                        Material material = Material.getMaterial(matString.toUpperCase());
-
-                        if (material != null) {
-                            int quantidade = secaoItens.getInt(key + ".quantidade", 1);
-                            double preco = secaoItens.getDouble(key + ".preco", 100.0);
-
-                            processarCompraItem(player, material, quantidade, preco);
+            String uuidStr = item.getItemMeta().getPersistentDataContainer().get(lojaTargetKey, PersistentDataType.STRING);
+            if (uuidStr != null) {
+                Location loc = plugin.getSalvos().getLocation("lojas_publicas." + uuidStr + ".location");
+                if (loc != null) {
+                    player.closeInventory();
+                    player.teleportAsync(loc).thenAccept(success -> {
+                        if (success) {
+                            player.sendMessage("§a🎉 Bem-vindo à loja de " + item.getItemMeta().getDisplayName());
+                            player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
                         }
-                        break; // Para o laço de repetição depois de achar o item
-                    }
-                    slotAtual++;
+                    });
                 }
+            }
+        }
+
+        // --- LÓGICA: SUB-MENU END ---
+        else if (title.equals("§8Loja: The End")) {
+            event.setCancelled(true);
+            if (event.getSlot() == 26) {
+                abrirMenuServidor(player);
+                return;
+            }
+            processarCompraDinamica(player, event.getSlot());
+        }
+    }
+
+    // ==========================================
+    // MÉTODOS DE APOIO E COMPRA
+    // ==========================================
+
+    private void processarCompraLimite(Player player) {
+        double preco = plugin.getConfig().getDouble("loja.terrenos.preco_limite", 10000.0);
+        if (econ.has(player, preco)) {
+            econ.withdrawPlayer(player, preco);
+            sistemaTerrenos.adicionarLimite(player, 500);
+            player.sendMessage("§a🎉 Limite aumentado em +500 blocos!");
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        } else {
+            player.sendMessage("§cSaldo insuficiente!");
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+        }
+    }
+
+    private void processarCompraDinamica(Player player, int slot) {
+        ConfigurationSection secaoItens = plugin.getConfig().getConfigurationSection("loja.end.itens");
+        if (secaoItens == null) return;
+
+        int i = 0;
+        for (String key : secaoItens.getKeys(false)) {
+            if (i++ == slot) {
+                Material mat = Material.getMaterial(secaoItens.getString(key + ".material").toUpperCase());
+                int qtd = secaoItens.getInt(key + ".quantidade");
+                double preco = secaoItens.getDouble(key + ".preco");
+
+                if (econ.has(player, preco)) {
+                    econ.withdrawPlayer(player, preco);
+                    player.getInventory().addItem(new ItemStack(mat, qtd)).values().forEach(rest ->
+                            player.getWorld().dropItemNaturally(player.getLocation(), rest));
+                    player.sendMessage("§aCompra realizada!");
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                } else {
+                    player.sendMessage("§cSaldo insuficiente!");
+                }
+                break;
             }
         }
     }
 
-    private void processarCompraItem(Player player, Material material, int quantidade, double preco) {
-        if (econ.has(player, preco)) {
-            econ.withdrawPlayer(player, preco);
-            ItemStack itemComprado = new ItemStack(material, quantidade);
-            HashMap<Integer, ItemStack> sobrou = player.getInventory().addItem(itemComprado);
-            if (!sobrou.isEmpty()) {
-                player.getWorld().dropItemNaturally(player.getLocation(), itemComprado);
-            }
-            player.sendMessage("§aVocê comprou §f" + quantidade + "x " + material.name() + " §apor §e" + econ.format(preco) + "§a!");
-            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-        } else {
-            player.sendMessage("§cVocê não tem dinheiro suficiente! Custa " + econ.format(preco));
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+    private ItemStack criarItem(Material mat, String nome, List<String> lore) {
+        ItemStack item = new ItemStack(mat);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(nome);
+            meta.setLore(lore);
+            item.setItemMeta(meta);
         }
+        return item;
+    }
+
+    private ItemStack criarIconeVenda(Material mat, String nome, int qtd, double preco) {
+        ItemStack item = new ItemStack(mat, qtd);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(nome.replace("&", "§"));
+            meta.setLore(Arrays.asList("§fQuantidade: §7" + qtd + "x", "§fPreço: §c" + econ.format(preco), "", "§eClique para comprar!"));
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 }

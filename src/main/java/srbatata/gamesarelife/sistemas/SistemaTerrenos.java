@@ -26,12 +26,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter {
 
-    // [NOVO] Instância Singleton para acesso global
+    // Instância Singleton para acesso global
     private static SistemaTerrenos instance;
 
     private final Principal plugin;
     public final NamespacedKey keyVara;
     private final String urlBanco;
+
+    // [NOVO] Conexão persistente com o banco de dados
+    private Connection conexao;
 
     private static final List<String> SUBCOMANDOS = List.of("proteger", "desproteger", "adicionar", "remover", "membros", "listar", "renomear", "ajuda");
 
@@ -48,7 +51,7 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
     private final int LIMITE_BASE = 400;
 
     public SistemaTerrenos(Principal plugin) {
-        // [NOVO] Define a instância ao inicializar
+        // Define a instância ao inicializar
         instance = this;
 
         this.plugin = plugin;
@@ -60,14 +63,25 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
 
         this.urlBanco = "jdbc:sqlite:" + plugin.getDataFolder().getAbsolutePath() + "/terrenos.db";
 
-        criarTabela();
+        conectarBanco(); // [MODIFICADO] Inicia a conexão fixa com o banco
         carregarTerrenos();
         iniciarVisualizadorDeBordas();
     }
 
-    // [NOVO] Método para pegar a instância do sistema de terrenos
+    // Método para pegar a instância do sistema de terrenos
     public static SistemaTerrenos getInstance() {
         return instance;
+    }
+
+    // [NOVO] Método para inicializar o banco de dados e manter a conexão aberta
+    private void conectarBanco() {
+        try {
+            if (conexao != null && !conexao.isClosed()) return;
+            conexao = DriverManager.getConnection(urlBanco);
+            criarTabela();
+        } catch (SQLException e) {
+            plugin.getLogger().severe("[Terrenos] Erro ao conectar ao SQLite: " + e.getMessage());
+        }
     }
 
     public void desativar() {
@@ -80,6 +94,15 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         cacheBlocosUsados.clear();
         nomesCache.clear();
         jogadorNoTerreno.clear();
+
+        // [NOVO] Fecha a conexão com o banco de dados de forma segura
+        try {
+            if (conexao != null && !conexao.isClosed()) {
+                conexao.close();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().severe("Erro ao fechar conexão SQLite: " + e.getMessage());
+        }
     }
 
     private void criarTabela() {
@@ -97,8 +120,8 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
             );
             """;
 
-        try (Connection conn = DriverManager.getConnection(urlBanco);
-             Statement stmt = conn.createStatement()) {
+        // [MODIFICADO] Utiliza a conexão persistente
+        try (Statement stmt = conexao.createStatement()) {
             stmt.execute(sql);
         } catch (SQLException e) {
             plugin.getLogger().severe("[Terrenos] Erro ao criar tabela SQLite: " + e.getMessage());
@@ -113,6 +136,9 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         jogadorNoTerreno.remove(uuid);
         cacheBlocosUsados.remove(uuid);
 
+        // Limpeza de cache para evitar Memory Leaks reais
+        nomesCache.remove(uuid);
+
         if (bordasAtivas.containsKey(uuid)) {
             for (Location loc : bordasAtivas.get(uuid).keySet()) {
                 event.getPlayer().sendBlockChange(loc, loc.getBlock().getBlockData());
@@ -126,7 +152,6 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         event.blockList().removeIf(block -> isBlocoProtegido(block.getLocation()));
     }
 
-    // [MODIFICADO] Esse método agora é PUBLIC para o EvPick poder consultar!
     public boolean isBlocoProtegido(Location loc) {
         return getTerrenoLocal(loc) != null;
     }
@@ -248,8 +273,8 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
                 amigos=excluded.amigos, nome=excluded.nome;
                 """;
 
-            try (Connection conn = DriverManager.getConnection(urlBanco);
-                 PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            // [MODIFICADO] Utiliza a conexão persistente
+            try (PreparedStatement ps = conexao.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
                 if (t.id == -1) { ps.setNull(1, Types.INTEGER); } else { ps.setInt(1, t.id); }
 
@@ -285,8 +310,8 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
 
         CompletableFuture.runAsync(() -> {
             String sql = "DELETE FROM terrenos WHERE id = ?";
-            try (Connection conn = DriverManager.getConnection(urlBanco);
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
+            // [MODIFICADO] Utiliza a conexão persistente
+            try (PreparedStatement ps = conexao.prepareStatement(sql)) {
                 ps.setInt(1, t.id);
                 ps.executeUpdate();
             } catch (SQLException e) {
@@ -299,8 +324,8 @@ public class SistemaTerrenos implements Listener, CommandExecutor, TabCompleter 
         terrenosProtegidos.clear();
 
         String sqlSelect = "SELECT * FROM terrenos";
-        try (Connection conn = DriverManager.getConnection(urlBanco);
-             Statement stmt = conn.createStatement();
+        // [MODIFICADO] Utiliza a conexão persistente
+        try (Statement stmt = conexao.createStatement();
              ResultSet rs = stmt.executeQuery(sqlSelect)) {
 
             while (rs.next()) {

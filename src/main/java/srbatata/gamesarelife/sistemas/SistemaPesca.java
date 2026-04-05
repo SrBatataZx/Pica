@@ -301,4 +301,8 @@ public class SistemaPesca implements Listener {
         p.sendMessage("§7[!] Você pegou lixo, mais sorte na próxima...");
         p.playSound(p.getLocation(), Sound.BLOCK_GRAVEL_BREAK, 1f, 1f);
     }
+    @EventHandler
+    public void aoSairPesca(org.bukkit.event.player.PlayerQuitEvent e) {
+        peixeSlot.remove(e.getPlayer().getUniqueId());
+    }
 }

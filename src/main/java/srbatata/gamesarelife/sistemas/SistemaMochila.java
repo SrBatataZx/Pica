@@ -1,4 +1,4 @@
-package srbatata.gamesarelife;
+package srbatata.gamesarelife.sistemas;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -111,7 +111,7 @@ public class SistemaMochila implements Listener {
     }
 
     // ==========================================
-    // 2. MOMENTO DO CRAFT (Gera ID e Vincula)
+    // 2. MOMENTO DO CRAFT (Apenas gera o ID)
     // ==========================================
     @EventHandler
     public void onCraft(CraftItemEvent event) {
@@ -128,20 +128,12 @@ public class SistemaMochila implements Listener {
             ItemStack result = event.getCurrentItem();
             if (result != null && result.hasItemMeta()) {
                 ItemMeta meta = result.getItemMeta();
-                Player player = (Player) event.getWhoClicked();
 
+                // Gera apenas o ID único da mochila, mas NÃO vincula o dono ainda
                 String novoID = UUID.randomUUID().toString();
-                String donoID = player.getUniqueId().toString();
-
-                // Salva usando as chaves novas
                 meta.getPersistentDataContainer().set(keyMochilaID, PersistentDataType.STRING, novoID);
-                meta.getPersistentDataContainer().set(keyMochilaDono, PersistentDataType.STRING, donoID);
 
-                List<String> lore = meta.getLore();
-                if (lore != null && !lore.isEmpty()) {
-                    lore.set(0, "§7Dono: §a" + player.getName());
-                }
-                meta.setLore(lore);
+                // Mantém a lore original de "Dono: Ninguém"
                 result.setItemMeta(meta);
             }
         }
@@ -167,7 +159,7 @@ public class SistemaMochila implements Listener {
     }
 
     // ==========================================
-    // 4. ABRIR O INVENTÁRIO
+    // 4. ABRIR O INVENTÁRIO (E VINCULAR O DONO)
     // ==========================================
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
@@ -185,20 +177,38 @@ public class SistemaMochila implements Listener {
             event.setCancelled(true);
 
             Player player = event.getPlayer();
+            PersistentDataContainer pdc = meta.getPersistentDataContainer();
 
-            if (!meta.getPersistentDataContainer().has(keyMochilaID, PersistentDataType.STRING)) {
+            if (!pdc.has(keyMochilaID, PersistentDataType.STRING)) {
                 player.sendMessage("§cEsta mochila é inválida. Crafte uma nova!");
                 return;
             }
 
-            String donoID = meta.getPersistentDataContainer().get(keyMochilaDono, PersistentDataType.STRING);
-            if (donoID != null && !donoID.equals(player.getUniqueId().toString())) {
-                player.sendMessage("§cEsta mochila pertence a outro jogador! Somente o dono pode abrir.");
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-                return;
+            // [MODIFICAÇÃO] Verifica se a mochila JÁ TEM um dono
+            if (!pdc.has(keyMochilaDono, PersistentDataType.STRING)) {
+                // Se não tiver dono, vincula a mochila ao jogador que acabou de abrir
+                pdc.set(keyMochilaDono, PersistentDataType.STRING, player.getUniqueId().toString());
+
+                // Atualiza a linha do dono na Lore
+                List<String> lore = meta.getLore();
+                if (lore != null && !lore.isEmpty()) {
+                    lore.set(0, "§7Dono: §a" + player.getName());
+                }
+                meta.setLore(lore);
+                item.setItemMeta(meta); // Aplica a modificação no item na mão do jogador
+
+                player.sendMessage("§a§l[!] §aEsta mochila foi vinculada a você!");
+            } else {
+                // Se já tiver dono, verifica se o dono atual é quem está tentando abrir
+                String donoID = pdc.get(keyMochilaDono, PersistentDataType.STRING);
+                if (!donoID.equals(player.getUniqueId().toString())) {
+                    player.sendMessage("§cEsta mochila pertence a outro jogador! Somente o dono pode abrir.");
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    return;
+                }
             }
 
-            String idMochila = meta.getPersistentDataContainer().get(keyMochilaID, PersistentDataType.STRING);
+            String idMochila = pdc.get(keyMochilaID, PersistentDataType.STRING);
             abrirMochila(player, idMochila);
         }
     }
@@ -250,7 +260,7 @@ public class SistemaMochila implements Listener {
     }
 
     // ==========================================
-    // 6. SALVAR COM SEGURANÇA AO FECHAR
+    // 6. SALVAR COM SEGURANÇA AO FECHAR / SAIR
     // ==========================================
     @EventHandler
     public void onMenuClose(InventoryCloseEvent event) {
@@ -264,6 +274,17 @@ public class SistemaMochila implements Listener {
 
             player.sendMessage("§aMochila salva com sucesso!");
             player.playSound(player.getLocation(), Sound.BLOCK_CHEST_CLOSE, 0.5f, 1.0f);
+        }
+    }
+
+    @EventHandler
+    public void aoSairMochila(org.bukkit.event.player.PlayerQuitEvent e) {
+        UUID uuid = e.getPlayer().getUniqueId();
+        if (mochilasAbertas.containsKey(uuid)) {
+            String id = mochilasAbertas.remove(uuid);
+            // Salva a mochila caso ele desconecte abruptamente com ela aberta
+            plugin.getSalvos().set("mochilas." + id, Arrays.asList(e.getPlayer().getOpenInventory().getTopInventory().getContents()));
+            plugin.saveSalvos();
         }
     }
 }

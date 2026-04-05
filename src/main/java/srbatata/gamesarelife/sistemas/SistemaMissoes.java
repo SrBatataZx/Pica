@@ -1,4 +1,4 @@
-package srbatata.gamesarelife;
+package srbatata.gamesarelife.sistemas;
 
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -93,7 +93,10 @@ public class SistemaMissoes implements Listener {
     // Salva a missão do jogador caso ele saia do servidor (Para não lagar salvando a cada bloco quebrado)
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        salvarMissao(event.getPlayer().getUniqueId());
+        UUID uuid = event.getPlayer().getUniqueId();
+        salvarMissao(uuid);
+        // CORREÇÃO: Remover da memória após salvar
+        missoesAtivas.remove(uuid);
     }
 
     // ==========================================

@@ -44,9 +44,20 @@ commands:
     description: Vai para o spawn do servidor
   setspawn:
     description: Define o local do spawn do servidor
-  pvp:
-    description: Sistema de duelos PvP.
-    usage: /pvp <player/accept/setarea>
+  regiao:
+    description: Sistema de protecao e definicao de areas.
+    aliases: [ rg, regioes ] # Assim você pode usar /rg pos1 ou /rg wand
+    permission: gamesarelife.adm
+    permission-message: §cVocê não tem permissão para usar este comando.
+  warp:
+    description: Teleporta para um local definido.
+    usage: /warp <nome>
+  setwarp:
+    description: Define uma nova warp (Apenas Admin).
+    usage: /setwarp <nome>
+  delwarp:
+    description: Deleta uma warp (Apenas Admin).
+    usage: /delwarp <nome>
   carteira:
     description: Verifique seu saldo atual.
     aliases: [ saldo, money ]

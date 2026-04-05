@@ -18,6 +18,7 @@ import srbatata.gamesarelife.itens.eventos.EvPick;
 import srbatata.gamesarelife.menus.*;
 import srbatata.gamesarelife.sistemas.*;
 import srbatata.gamesarelife.sistemas.comandos.*;
+import srbatata.gamesarelife.sistemas.regioes.SistemaRegioes;
 import srbatata.gamesarelife.util.ComandoItemNome;
 
 public class PluginRegistry {
@@ -84,9 +85,14 @@ public class PluginRegistry {
         regCmd("tpadeny", tpa);
         regCmd("rtp", new SistemaRTP());
 
-        SistemaArenaPvP pvp = new SistemaArenaPvP(plugin, economia);
-        regCmd("pvp", pvp);
-        regEvt(pvp);
+        SistemaRegioes regioes = new SistemaRegioes(plugin);
+        regCmd("regiao", regioes);
+        regEvt(regioes);
+
+        SistemaWarps warps = new SistemaWarps(plugin);
+        regCmd("warp", warps);
+        regCmd("setwarp", warps);
+        regCmd("delwarp", warps);
 
         regCmd("discord", new ComandoDiscord());
         regCmd("itemnome", new ComandoItemNome());
